@@ -30,6 +30,7 @@ class Program
         string exe = GetArg(args, "--exe", @"C:\Games\Solo\Bastion\Bastion.exe");
         int width  = int.Parse(GetArg(args, "--width", "5120"));
         int height = int.Parse(GetArg(args, "--height", "1440"));
+        bool bakeWindowed = !args.Contains("--keep-fullscreen"); // bake in borderless windowed by default
 
         if (!File.Exists(exe)) { Console.Error.WriteLine($"exe not found: {exe}"); return 1; }
 
@@ -54,6 +55,7 @@ class Program
         PatchCenter(module, "setScaledLocation", instanceLocationField: true);
         PatchCenter(module, "getScaledLocation", instanceLocationField: false);
         PatchBackdrop(module);
+        if (bakeWindowed) PatchWindowed(module);
 
         asm.Write(exe);
         Console.WriteLine("IL patches written.");
@@ -197,6 +199,27 @@ class Program
         var div = Instruction.Create(OpCodes.Div);
         p.InsertAfter(first, conv); p.InsertAfter(conv, ld); p.InsertAfter(ld, div);
         Console.WriteLine("  [5] drawBackdrop -> width-based scale (SCREEN_WIDTH/1920)");
+    }
+
+    // 7) Bake in borderless windowed: force m_commandLineWindowed and m_commandLineNoBorder
+    //    true at the start of App::Main, exactly as if launched with "-windowed -noborder".
+    //    The arg-parse loop only ever sets these flags true (never false), so setting them
+    //    true up front can't be undone. Removes the need for a launcher .bat / Steam launch
+    //    options. Pass --keep-fullscreen to skip this and leave the game's default mode.
+    static void PatchWindowed(ModuleDefinition module)
+    {
+        var app = module.Types.First(t => t.FullName == "GSGE.App");
+        var m = app.Methods.First(x => x.Name == "Main");
+        var fWin = m.Body.Instructions.First(il => il.Operand is FieldReference fr && fr.Name == "m_commandLineWindowed").Operand as FieldReference;
+        var fBorder = m.Body.Instructions.First(il => il.Operand is FieldReference fr && fr.Name == "m_commandLineNoBorder").Operand as FieldReference;
+        var p = m.Body.GetILProcessor();
+        var first = m.Body.Instructions[0];
+        foreach (var ins in new[]
+        {
+            Instruction.Create(OpCodes.Ldc_I4_1), Instruction.Create(OpCodes.Stsfld, fWin),
+            Instruction.Create(OpCodes.Ldc_I4_1), Instruction.Create(OpCodes.Stsfld, fBorder),
+        }) p.InsertBefore(first, ins);
+        Console.WriteLine("  [7] Main -> force borderless windowed (-windowed -noborder)");
     }
 
     // 6) Resolution table (raw bytes). Two parallel int32 arrays (widths then heights) of the
