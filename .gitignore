@@ -1,0 +1,12 @@
+# Never commit game binaries or their backups
+*.exe
+*.dll
+*.orig-backup
+*.res-backup
+*.vp-backup
+*.scale-backup
+*.centered-checkpoint
+
+# .NET build output
+bin/
+obj/
