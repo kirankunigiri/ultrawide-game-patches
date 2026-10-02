@@ -15,6 +15,8 @@ Each game lives in its own top-level folder with a consistent layout.
              it is just the guide, since the patch is applied from src/.
   src/       Source needed to produce the fix that isn't a plain drop-in - e.g. a
              patcher program you run against your own game files, or the mod source.
+             Left out when the fix is a script with no build step (dist/ is then the
+             source, as for Fatal Claw).
   notes.md   Full technical write-up: how the fix works, every change and why, how to
              adapt it (other resolutions/monitors), caveats, and troubleshooting.
 ```
@@ -24,12 +26,25 @@ Each game lives in its own top-level folder with a consistent layout.
 > apply it to your own legally-owned copy. Mods we wrote ourselves *are* shipped built
 > in `dist/`, since they are our own code and touch nothing shipped by the publisher.
 
+## Conventions
+
+- **Silent by default.** Fixes write no logs, log files or debug output unless you turn on
+  their debug switch (each game's `INSTALL.txt` names it). Only turn it on while
+  troubleshooting. Third-party loaders (UE4SS, MelonLoader) still keep their own logs.
+  Gecko Gods predates this rule and still writes its messages to MelonLoader's log.
+- **Your resolution is a setting.** Fixes default to 32:9 (5120×1440) but take your
+  resolution or aspect ratio as a setting, so 21:9 works too.
+- **No game files in the repo** (see above).
+
+Adding or changing a fix (people or AI agents): follow [AGENTS.md](AGENTS.md).
+
 ## Game List
 
 | Game | Fix type | Target tested |
 |------|----------|---------------|
 | [Bastion](Bastion/) | Binary patch (Mono.Cecil) | 5120×1440 (32:9) |
 | [Gecko Gods](GeckoGods/) | Runtime mod (MelonLoader / Unity IL2CPP) | 5120×1440 (32:9) |
+| [Fatal Claw](FatalClaw/) | Runtime mod (UE4SS Lua / Unreal Engine 4.27) | 5120×1440 (32:9) |
 
 ### Bastion - what's fixed (all at 32:9 / 5120×1440)
 
@@ -53,3 +68,14 @@ Resolution-independent IL patches; only the resolution-table entry is per-resolu
 - **Fully configurable** - target resolution, each individual fix, and borderless vs windowed are all togglable in `MelonPreferences.cfg`; no rebuild needed for other ultrawide resolutions.
 
 Runtime mod, so **no game files are modified** and it is removed by deleting one DLL. Unity 6 / IL2CPP means the game's code is compiled and obfuscated, so the mod corrects Unity's own objects at runtime instead of patching game code. See [GeckoGods/notes.md](GeckoGods/notes.md), including the IL2CPP native-crash lesson in section 4.
+
+### Fatal Claw - what's fixed (tested at 32:9 / 5120×1440, configurable for 21:9)
+
+- **Full-width image** - removes the 16:9 pillarbox the game locks onto every camera, so it renders across the whole screen.
+- **Correct field of view (Hor+)** - keeps the game's 16:9 vertical framing and shows more of the world to the sides, instead of the ~2x zoom you get from only removing the bars (gameplay camera 60 -> 98.2 degrees at 32:9).
+- **Cutscenes and title intro** - the in-engine cutscenes and the animated title screen set the FOV every frame; every frame is converted, so they're no longer zoomed in.
+- **Gate-teleport zoom, no flicker** - the gate's zoom-in and zoom-out are converted frame by frame and stay clean however many times you teleport.
+- **No tint seam** - the darkening overlay in front of the gameplay camera is widened to cover the full screen instead of only the middle 16:9.
+- **21:9 or 32:9** - set your resolution in `config.lua`; the FOV and overlay math follow your aspect ratio (only 32:9 tested in-game).
+
+Runtime mod (UE4SS Lua), so **no game files are modified** and it is removed by deleting one folder. Needs the UE4SS **experimental** build, because the stable release can't identify this game's engine. Silent unless `Debug = true` in `config.lua`. See [FatalClaw/notes.md](FatalClaw/notes.md), including the gate-teleport flicker post-mortem in section 4.

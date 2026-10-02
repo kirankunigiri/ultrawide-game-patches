@@ -1,0 +1,150 @@
+FATAL CLAW ULTRAWIDE (21:9 / 32:9) - INSTALL
+============================================
+
+This fix is a UE4SS Lua mod. No game files are modified - UE4SS loads alongside the game
+and the mod corrects the cameras at runtime: full-width image, correct field of view,
+cutscenes, the gate-teleport zoom and the camera tint overlay.
+
+Tested at 5120x1440 (32:9) on Fatal Claw (Unreal Engine 4.27, Windows build dated
+2026-08-26) with the UE4SS experimental build v3.0.1-1152-ge3ba1016. 21:9 runs the same
+code with a different aspect ratio (STEP 5) but has not been tested in-game.
+
+Below, <game> means your Fatal Claw install folder (the one containing FatalClaw.exe).
+
+
+STEP 1 - Install UE4SS (experimental build)
+-------------------------------------------
+Download the UE4SS EXPERIMENTAL build from:
+    https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/experimental-latest
+
+Pick the file named like UE4SS_v3.0.1-1152-ge3ba1016.zip (the tested build; a newer
+UE4SS_v3.x-....zip listed there should also work). Not the "zDEV-", "zCustomGameConfigs"
+or "zMapGenBP" files.
+
+Do NOT use the stable "v3.0.1" release: it cannot identify this game's engine and never
+starts (UE4SS.log ends with "PS scan timed out").
+
+Extract the zip into <game>\FatalClaw\Binaries\Win64\ so that dwmapi.dll and the ue4ss
+folder sit next to FatalClaw-Win64-Shipping.exe:
+
+    <game>\FatalClaw\Binaries\Win64\
+        FatalClaw-Win64-Shipping.exe
+        dwmapi.dll           <- from the zip
+        ue4ss\               <- from the zip
+
+
+STEP 2 - Tell UE4SS the engine version (required)
+-------------------------------------------------
+Open <game>\FatalClaw\Binaries\Win64\ue4ss\UE4SS-settings.ini, find the
+[EngineVersionOverride] section and fill in the two values:
+
+    [EngineVersionOverride]
+    MajorVersion = 4
+    MinorVersion = 27
+
+Without this, UE4SS fails to identify the engine and the mod never loads.
+
+
+STEP 3 - Turn off UE4SS's bundled example mods (recommended)
+------------------------------------------------------------
+UE4SS ships with developer mods (cheat manager, console enabler, Blueprint mod loader,
+keybinds and so on). Fatal Claw doesn't need them, and the fix was tested with all of
+them off.
+
+In <game>\FatalClaw\Binaries\Win64\ue4ss\Mods\mods.txt set every entry to 0:
+
+    CheatManagerEnablerMod : 0
+    ConsoleCommandsMod : 0
+    ConsoleEnablerMod : 0
+    SplitScreenMod : 0
+    LineTraceMod : 0
+    BPML_GenericFunctions : 0
+    BPModLoaderMod : 0
+    Keybinds : 0
+
+The same folder also has a mods.json: set every "mod_enabled" in it to false.
+
+
+STEP 4 - Install the mod
+------------------------
+Copy the UltrawideFix folder (next to this file) into ue4ss\Mods\:
+
+    <game>\FatalClaw\Binaries\Win64\ue4ss\Mods\UltrawideFix\
+        enabled.txt
+        Scripts\main.lua
+        Scripts\config.lua
+
+enabled.txt is what switches the mod on. No mods.txt entry is needed.
+
+
+STEP 5 - Set your resolution
+----------------------------
+Open ue4ss\Mods\UltrawideFix\Scripts\config.lua and set ScreenWidth / ScreenHeight to
+the resolution you play at:
+
+    32:9   5120 x 1440 (default), 3840 x 1080
+    21:9   3440 x 1440, 2560 x 1080, 3840 x 1600
+
+Run the game itself at that same native resolution (tested: fullscreen windowed,
+5120x1440).
+
+
+STEP 6 - Play
+-------------
+Launch the game the usual way. The 16:9 side bars are gone and the view is wider.
+
+The mod is silent: it writes nothing anywhere unless you turn on Debug (see below).
+UE4SS itself still writes its own ue4ss\UE4SS.log. Its line
+    Mod 'UltrawideFix' has enabled.txt, starting mod.
+confirms the mod was found.
+
+
+CONFIGURATION
+-------------
+config.lua (save, then restart the game):
+
+    ScreenWidth / ScreenHeight   your resolution; sets the aspect ratio the fix targets
+    FovScale                     1.0 = the game's 16:9 vertical view, wider (default)
+                                 above 1.0 zooms out further, below 1.0 zooms in (0.5 - 2.0)
+    Debug                        false = no logging (default)
+                                 true  = log what the mod does to ue4ss\UE4SS.log
+
+If the screen is not wider than 16:9, the mod switches itself off.
+
+
+UNINSTALL
+---------
+Remove the fix only:  delete ue4ss\Mods\UltrawideFix
+Remove UE4SS too:     delete dwmapi.dll and the ue4ss folder from
+                      <game>\FatalClaw\Binaries\Win64\
+Nothing else is changed, so the game is back to stock (16:9 with side bars).
+
+
+TROUBLESHOOTING
+---------------
+Turn on Debug = true in config.lua first. The mod then writes [UltrawideFix] lines to
+ue4ss\UE4SS.log, starting with one that shows the resolution it is using and where its
+settings came from. Turn it back off when you are done.
+
+No UE4SS.log at all after launching:
+    dwmapi.dll is not next to FatalClaw-Win64-Shipping.exe (STEP 1).
+
+UE4SS.log ends with "PS scan timed out", or mentions the engine version:
+    STEP 2 is missing, or the stable v3.0.1 release is installed instead of the
+    experimental build.
+
+No "Mod 'UltrawideFix' has enabled.txt" line in UE4SS.log:
+    The mod folder is in the wrong place or enabled.txt is missing (STEP 4).
+
+"settings from defaults" in the Debug log, or Debug = true writes nothing:
+    config.lua has a typo and could not be read, so the mod is using its built-in
+    defaults (5120x1440, Debug off). Every setting line needs a trailing comma.
+
+The picture looks too zoomed in or too zoomed out:
+    ScreenWidth / ScreenHeight don't match the resolution the game runs at.
+
+Side bars still there:
+    The game is not running at an ultrawide resolution (check its display settings),
+    or UE4SS / the mod isn't loading (see above).
+
+See ../notes.md for how the fix works.
