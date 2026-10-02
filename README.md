@@ -10,13 +10,12 @@ Each game lives in its own top-level folder with a consistent layout.
 
 ```
 <Game>/
-  dist/      Files you copy directly into the game's install folder, plus an INSTALL
+  dist/      Files you copy directly into the game's install folder, plus an INSTALL.md
              guide. For a runtime mod this is the built mod itself; for a binary patch
              it is just the guide, since the patch is applied from src/.
   src/       Source needed to produce the fix that isn't a plain drop-in - e.g. a
-             patcher program you run against your own game files, or the mod source.
-             Left out when the fix is a script with no build step (dist/ is then the
-             source, as for Fatal Claw).
+             patcher program you run against your own game files, the mod source, or
+             the script that builds the game's one-zip release.
   notes.md   Full technical write-up: how the fix works, every change and why, how to
              adapt it (other resolutions/monitors), caveats, and troubleshooting.
 ```
@@ -29,11 +28,14 @@ Each game lives in its own top-level folder with a consistent layout.
 ## Conventions
 
 - **Silent by default.** Fixes write no logs, log files or debug output unless you turn on
-  their debug switch (each game's `INSTALL.txt` names it). Only turn it on while
+  their debug switch (each game's `INSTALL.md` names it). Only turn it on while
   troubleshooting. Third-party loaders (UE4SS, MelonLoader) still keep their own logs.
   Gecko Gods predates this rule and still writes its messages to MelonLoader's log.
 - **Your resolution is a setting.** Fixes default to 32:9 (5120×1440) but take your
   resolution or aspect ratio as a setting, so 21:9 works too.
+- **One-zip installs where possible.** When a fix needs a mod loader, its release on the
+  [Releases page](https://github.com/kirankunigiri/ultrawide-game-patches/releases) bundles
+  the exact tested loader build, already configured, plus the mod: extract and play.
 - **No game files in the repo** (see above).
 
 Adding or changing a fix (people or AI agents): follow [AGENTS.md](AGENTS.md).
@@ -78,4 +80,4 @@ Runtime mod, so **no game files are modified** and it is removed by deleting one
 - **No tint seam** - the darkening overlay in front of the gameplay camera is widened to cover the full screen instead of only the middle 16:9.
 - **21:9 or 32:9** - set your resolution in `config.lua`; the FOV and overlay math follow your aspect ratio (only 32:9 tested in-game).
 
-Runtime mod (UE4SS Lua), so **no game files are modified** and it is removed by deleting one folder. Needs the UE4SS **experimental** build, because the stable release can't identify this game's engine. Silent unless `Debug = true` in `config.lua`. See [FatalClaw/notes.md](FatalClaw/notes.md), including the gate-teleport flicker post-mortem in section 4.
+**Install: download one zip from [Releases](https://github.com/kirankunigiri/ultrawide-game-patches/releases/tag/fatalclaw-v1.0) and extract it into the game folder** ([FatalClaw/dist/INSTALL.md](FatalClaw/dist/INSTALL.md)). It bundles the exact UE4SS experimental build that was tested (the stable release can't identify this game's engine), already configured. Runtime mod (UE4SS Lua), so **no game files are modified** and it is removed by deleting one folder. Silent unless `Debug = true` in `config.lua`. See [FatalClaw/notes.md](FatalClaw/notes.md), including the gate-teleport flicker post-mortem in section 4.

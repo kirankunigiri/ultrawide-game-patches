@@ -6,8 +6,9 @@ gate-teleport zoom and the camera tint overlay.
 
 The fix is a **UE4SS Lua mod** (`UltrawideFix`). No game files are modified.
 
-There is no `src/` folder for this game: the mod is a plain Lua script with no build step,
-so `dist/UltrawideFix/` is both the source and the drop-in.
+The mod is a plain Lua script, so `dist/UltrawideFix/` is both its source and the drop-in.
+`src/package.ps1` builds the one-zip release (UE4SS + settings + the mod) that's published
+on the repo's GitHub Releases page.
 
 ---
 
@@ -219,10 +220,19 @@ nothing unless `Debug = true`. UE4SS itself always writes its own `ue4ss\UE4SS.l
 
 ## 7. Install, uninstall, troubleshooting
 
-See [dist/INSTALL.txt](dist/INSTALL.txt). In short: UE4SS experimental into
-`<game>\FatalClaw\Binaries\Win64\`, engine version override 4.27, bundled mods off, copy
-`UltrawideFix` into `ue4ss\Mods\`, set the resolution in `config.lua`. Uninstall by deleting
-`ue4ss\Mods\UltrawideFix` (or `dwmapi.dll` + `ue4ss\` to remove UE4SS too).
+See [dist/INSTALL.md](dist/INSTALL.md). In short: extract the release zip
+(`FatalClaw-Ultrawide-v<version>.zip`) into the game folder and, for 21:9, set the
+resolution in `config.lua`. The zip is built by `src/package.ps1`, which downloads the
+pinned UE4SS build (`UE4SS_v3.0.1-1152-ge3ba1016.zip`, SHA-256 checked), sets the engine
+version override to 4.27, turns UE4SS's bundled example mods off and adds `UltrawideFix`.
+Bundling matters because UE4SS's "experimental-latest" is a rolling release: the tested
+build disappears upstream when a newer one is published, but the release keeps it.
+Uninstall by deleting `ue4ss\Mods\UltrawideFix` (or `dwmapi.dll` + `ue4ss\` to remove
+UE4SS too).
+
+To publish a new version: bump `-Version`, run `src/package.ps1`, then
+`gh release create fatalclaw-v<version> src/out/FatalClaw-Ultrawide-v<version>.zip` and
+update the link in `dist/INSTALL.md`.
 
 With `Debug = true`, a healthy start looks like:
 

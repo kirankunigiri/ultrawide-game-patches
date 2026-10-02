@@ -11,5 +11,8 @@
 bin/
 obj/
 
+# Release bundles are built by src/package scripts and published as GitHub Release assets
+out/
+
 # Exception: our own built mods ARE the deliverable (small, built from src/ in this repo)
 !GeckoGods/dist/GeckoUltrawide.dll

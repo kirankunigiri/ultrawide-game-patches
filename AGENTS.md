@@ -21,7 +21,7 @@ A fix must not write anything at runtime unless the user turns on its debug swit
 - **One switch per fix**, in whatever the fix uses for settings: a config-file key
   (`Debug = true` in Fatal Claw's `config.lua`, the reference implementation), a loader
   preference (e.g. a `DebugLogging` entry in `MelonPreferences.cfg`) or a command-line
-  flag. Name it in the game's `INSTALL.txt` (CONFIGURATION and TROUBLESHOOTING) and
+  flag. Name it in the game's `INSTALL.md` (Configuration and Troubleshooting) and
   `notes.md`.
 - **Gate at the source.** Route every message through one helper that returns
   immediately when debug is off, and skip diagnostic-only work (probes, object scans made
@@ -46,15 +46,14 @@ values for 21:9 and 32:9, and say plainly which aspect ratios were actually test
 ### 3. Per-game folder layout
 ```
 <Game>/
-  dist/      Drop-in files for the game folder + INSTALL.txt
-  src/       Source needed to produce the fix (patcher / mod project). Left out when the
-             fix is a script with no build step; dist/ is then the source.
+  dist/      Drop-in files for the game folder + INSTALL.md
+  src/       Source needed to produce the fix (patcher / mod project) and, for a release
+             bundle, the package script that builds it (e.g. FatalClaw/src/package.ps1).
   notes.md   Technical write-up
 ```
 - Folder names have no spaces (`GeckoGods`, `FatalClaw`).
-- `INSTALL.txt` is plain text: steps to install (including where to get the exact tested
-  version of any loader such as UE4SS or MelonLoader), configuration, uninstall,
-  troubleshooting.
+- `INSTALL.md` is Markdown (it's read on GitHub): quick install first, then configuration,
+  uninstall, a manual install for people who already run the loader, and troubleshooting.
 - `notes.md` follows the existing ones: the game, the problem, the fix (every change and
   why), lessons, configuration, install pointers, what's not covered, and a reusable
   discovery method.
@@ -65,7 +64,22 @@ values for 21:9 and 32:9, and say plainly which aspect ratios were actually test
 - Never commit game binaries, game assets or backups of them (`.gitignore` blocks `*.exe`,
   `*.dll`, `*.orig-backup` and similar). Ship patchers that the user runs on their own copy.
 - Our own built mods may ship in `dist/` (add a `.gitignore` exception for the file).
-- Don't commit third-party loaders (UE4SS, MelonLoader); link to their releases instead.
+- Never commit third-party loaders (UE4SS, MelonLoader) or release zips to git. They go in
+  GitHub Release assets only (see rule 7).
+
+### 7. Releases (one-zip install)
+The user should be able to download one zip, extract it into the game folder and play.
+- When a fix needs a loader, publish a bundle: the exact tested loader build, already
+  configured for the game, plus the mod, laid out relative to the game folder (the folder
+  with the game's exe), so extracting merges everything into place.
+- Build it with a script in `<Game>/src/` (see `FatalClaw/src/package.ps1`): pin the loader
+  by exact download URL and SHA-256, apply settings in code, write zip entries with `/`
+  separators. Output goes to `src/out/` (git-ignored).
+- Check the loader's license allows redistribution and that its license file ships in the
+  zip (UE4SS: MIT, `ue4ss/LICENSE`).
+- Publish with `gh release create <game>-v<version> <zip> --title ... --notes ...` (tags are
+  per game, e.g. `fatalclaw-v1.0`) and link the asset's direct download URL in `INSTALL.md`.
+- Test the zip itself before publishing: extract it into a clean game install and launch.
 
 ### 5. Writing style
 - Use a normal hyphen "-" in docs, never an em dash.
