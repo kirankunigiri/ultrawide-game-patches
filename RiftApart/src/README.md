@@ -1,7 +1,7 @@
 # Rift Apart minimap and sprint assistant
 
 Windows/Python external overlay for the inspected RiftApart.exe **3.630.1.0**.
-This is a reverse-engineered prototype with map art for **Sargasso**, **Scarstu Debris Field** and **Savali**.
+This is a reverse-engineered prototype with map art for **Sargasso**, **Scarstu Debris Field**, **Savali** and **Blizar Prime**.
 Player tracking was confirmed working by the user. The native-toggle sprint
 assist (Always and Normal modes) was verified live on 2026-10-07; see SPRINT.md.
 

@@ -87,7 +87,7 @@ Runtime mod, so **no game files are modified** and it is removed by deleting one
 
 Not a rendering fix (the game already handles ultrawide): a gameplay helper that runs next to the game.
 
-- **New minimap** - the game has none. A square HUD minimap (and a fullscreen map on backtick) using the game's own map art, your live position and facing, the explored areas from the game's fog of war, and the collectibles/objective from the pause map with their real icons. Hides itself in menus, cutscenes and store screens. Planets so far: Sargasso, Scarstu Debris Field, Savali.
+- **New minimap** - the game has none. A square HUD minimap (and a fullscreen map on backtick) using the game's own map art, your live position and facing, the explored areas from the game's fog of war, and the collectibles/objective from the pause map with their real icons. Hides itself in menus, cutscenes and store screens. Planets so far: Sargasso, Scarstu Debris Field, Savali, Blizar Prime.
 - **Fixes shooting while sprinting** - pressing fire while sprinting could leave you unable to shoot for 1-3 seconds (the character flips between run and aim every frame). The helper detects that native state and clears it: steady fire about 15-30 ms after the click.
 - **Auto sprint mode** (default) - sprint turns itself back on whenever you move, including after jumps and dashes, and is dropped while you fire or aim. **Normal mode** (F8) leaves sprint to you but keeps the shooting fix.
 - **Auto hover mode (hover boots)** - the game only hovers while Shift is held; the helper turns Shift into a tap-to-start / tap-to-stop hover toggle. Aiming pauses hover; left click stays the hover boost.

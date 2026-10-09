@@ -93,10 +93,21 @@ def map_supported():
     """Select the art for the current native map; False when there is none (or map offline)."""
     return select_map(current_map_key())
 
+_registry_retry = 0.0
+
 def select_map(key):
     global MAP, MAP_KEY, _b, MAP_BG, explored, _styled, _plain, remembered
+    global _registry_retry
     if key == MAP_KEY:
-        return MAP is not None
+        if MAP is not None or key is None or time.monotonic() < _registry_retry:
+            return MAP is not None
+        _registry_retry = time.monotonic() + 5.0      # no art yet: maps.json may gain it
+        try:
+            if f"{key:#x}" not in json.load(open(MAPS_FILE)):
+                return False
+        except Exception:
+            return False
+        MAP_KEY = None                                 # load it below
     MAP_KEY, MAP, _b, explored, _styled = key, None, None, None, None
     remembered = _icons.setdefault(f"{key:#x}", {}) if key is not None else {}
     if key is not None and f"{key:#x}" not in _registry:

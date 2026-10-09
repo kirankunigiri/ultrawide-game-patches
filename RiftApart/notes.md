@@ -38,7 +38,7 @@ so finding collectibles means opening the menu over and over.
 - **Real map art** per planet: the game's own map textures, extracted once from the
   player's install (`src/extract_assets.py`), placed with each map's exact world bounds
   from the game's fog-of-war record. `src/maps.json` lists the supported planets
-  (Sargasso, Scarstu Debris Field, Savali); others hide the minimap until added.
+  (Sargasso, Scarstu Debris Field, Savali, Blizar Prime); others hide the minimap until added.
 - **Live player position and facing** from the same native hero entity the pause map
   uses (handle -> entity pool -> transform, generation-checked; TRACKING.md).
 - **Explored areas** from the game's own fog grid, drawn in the pause map's style.
@@ -111,8 +111,8 @@ logs): marker captures, pause-map scales, facing offset, sprint mode, hover boot
 
 ## 6. Not covered
 
-- Planets other than Sargasso, Scarstu Debris Field and Savali (texture pairing is
-  verified per planet; Nefarious City, Blizar Prime and Zordoom textures are known).
+- Planets other than Sargasso, Scarstu Debris Field, Savali and Blizar Prime (pairing is
+  verified per planet; Nefarious City and Zordoom textures are known).
 - Controller input and remapped sprint/movement keys.
 - Other game builds (the readers disable themselves; addresses must be re-derived).
 - 21:9 is computed but not tested in game.

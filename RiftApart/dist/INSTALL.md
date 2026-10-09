@@ -51,7 +51,7 @@ borderless/fullscreen, keyboard and mouse.
   hover to the game.
 - The minimap hides during cutscenes, store screens, the pause map, and where the map is
   offline or the planet has no art yet (see `src/maps.json`: Sargasso, Scarstu Debris
-  Field and Savali so far).
+  Field, Savali and Blizar Prime so far).
 - **Resolution:** the overlay follows your desktop resolution and keeps the minimap inside
   the centered 16:9 area, so 21:9 (3440x1440) uses the same placement; only 32:9 was
   tested in game. Size, zoom and margins are constants at the top of `src/minimap.py`.
