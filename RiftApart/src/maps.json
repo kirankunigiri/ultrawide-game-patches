@@ -1,0 +1,29 @@
+{
+ "0xbd52b112": {
+  "name": "Sargasso",
+  "texture": "maps/sargasso_map_UV_6-17-2021.png",
+  "x_min": -192.0,
+  "z_min": -728.0,
+  "x_max": 920.0,
+  "z_max": 384.0,
+  "source": "fog record MapMin/MapMax (exact)"
+ },
+ "0xd0ee6d89": {
+  "name": "Scarstu Debris Field (Zurkie's)",
+  "texture": "maps/zurkies_map_UV.png",
+  "x_min": -111.0,
+  "z_min": -178.0,
+  "x_max": 135.0,
+  "z_max": 68.0,
+  "source": "fog record MapMin/MapMax (exact)"
+ },
+ "0x553dd9e2": {
+  "name": "Savali",
+  "texture": "maps/savali_map_uv.png",
+  "x_min": -562.0,
+  "z_min": -510.0,
+  "x_max": 518.0,
+  "z_max": 570.0,
+  "source": "fog record MapMin/MapMax (exact); texture by fog/land match 0.72 vs 0.27"
+ }
+}

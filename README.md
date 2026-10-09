@@ -47,6 +47,7 @@ Adding or changing a fix (people or AI agents): follow [AGENTS.md](AGENTS.md).
 | [Bastion](Bastion/) | Binary patch (Mono.Cecil) | 5120×1440 (32:9) |
 | [Gecko Gods](GeckoGods/) | Runtime mod (MelonLoader / Unity IL2CPP) | 5120×1440 (32:9) |
 | [Fatal Claw](FatalClaw/) | Runtime mod (UE4SS Lua / Unreal Engine 4.27) | 5120×1440 (32:9) |
+| [Ratchet & Clank: Rift Apart](RiftApart/) | Gameplay helper (external Python overlay): **new minimap**, **fixes shooting while sprinting**, **auto sprint / auto hover** | 5120×1440 (32:9) |
 
 ### Bastion - what's fixed (all at 32:9 / 5120×1440)
 
@@ -81,3 +82,15 @@ Runtime mod, so **no game files are modified** and it is removed by deleting one
 - **21:9 or 32:9** - set your resolution in `config.lua`; the FOV and overlay math follow your aspect ratio (only 32:9 tested in-game).
 
 **Install: download one zip from [Releases](https://github.com/kirankunigiri/ultrawide-game-patches/releases/tag/fatalclaw-v1.0) and extract it into the game folder** ([FatalClaw/dist/INSTALL.md](FatalClaw/dist/INSTALL.md)). It bundles the exact UE4SS experimental build that was tested (the stable release can't identify this game's engine), already configured. Runtime mod (UE4SS Lua), so **no game files are modified** and it is removed by deleting one folder. Silent unless `Debug = true` in `config.lua`. See [FatalClaw/notes.md](FatalClaw/notes.md), including the gate-teleport flicker post-mortem in section 4.
+
+### Ratchet & Clank: Rift Apart - what's added and fixed (tested at 32:9 / 5120×1440)
+
+Not a rendering fix (the game already handles ultrawide): a gameplay helper that runs next to the game.
+
+- **New minimap** - the game has none. A square HUD minimap (and a fullscreen map on backtick) using the game's own map art, your live position and facing, the explored areas from the game's fog of war, and the collectibles/objective from the pause map with their real icons. Hides itself in menus, cutscenes and store screens. Planets so far: Sargasso, Scarstu Debris Field, Savali.
+- **Fixes shooting while sprinting** - pressing fire while sprinting could leave you unable to shoot for 1-3 seconds (the character flips between run and aim every frame). The helper detects that native state and clears it: steady fire about 15-30 ms after the click.
+- **Auto sprint mode** (default) - sprint turns itself back on whenever you move, including after jumps and dashes, and is dropped while you fire or aim. **Normal mode** (F8) leaves sprint to you but keeps the shooting fix.
+- **Auto hover mode (hover boots)** - the game only hovers while Shift is held; the helper turns Shift into a tap-to-start / tap-to-stop hover toggle. Aiming pauses hover; left click stays the hover boost.
+- **Starts with the game** - optional auto-start that launches the helper whenever the game runs.
+
+External Python program: reads game memory (read-only) and presses Shift for you, nothing injected and no game files modified. Game art is extracted once from your own install. Silent unless `--debug`. See [RiftApart/dist/INSTALL.md](RiftApart/dist/INSTALL.md) and [RiftApart/notes.md](RiftApart/notes.md).

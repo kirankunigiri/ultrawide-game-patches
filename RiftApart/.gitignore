@@ -1,0 +1,24 @@
+# Local extracted game artwork, captures, memory dumps and runtime state.
+src/*.png
+src/maps/
+src/icons/
+src/*.npy
+src/*.npz
+src/*.json
+!src/maps.json
+src/__pycache__/
+src/ALERT/
+research/*.log
+research/*.zip
+research/*.json
+research/*.py
+research/*.txt
+research/*.md
+src/*.log
+
+src/libdeflate.dll
+research/*.png
+src/*.jsonl
+src/*_out.txt
+src/*.tmp
+__pycache__/
