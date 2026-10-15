@@ -24,23 +24,43 @@ vertical view and get extra view left and right (Hor+).
    This is required - the patch is designed to be stretched.
 4. Launch Smash. In Add-ons, `VertPlus-2480x2248` should be ticked.
 
-## Other screen sizes
+## Other phones and screen sizes
 
-Generate a patch for your screen (landscape width x height) and install it the same way:
+The patch depends only on your screen's **shape** (aspect ratio), so make one for your
+screen and install it the same way as above. Needs Python 3 on a computer; no extra packages.
 
-```sh
-python3 SmashUltimate/src/make_vertplus.py --width 5120 --height 1440 --out out/
-```
+1. **Find your screen shape** - any one of these works:
+   - Phone connected over adb: let the script read it.
+     `python3 SmashUltimate/src/make_vertplus.py --from-adb --out out/`
+     (it reads `adb shell wm size`; on a foldable, unfold/fold first - it uses the screen
+     that is active right now).
+   - The resolution from the phone's spec sheet (e.g. 2400x1080):
+     `--width 2400 --height 1080`
+   - Just the ratio: `--aspect 20:9`, `--aspect 16:10` or `--aspect 1.6`
+   Portrait or landscape numbers both work (it always uses landscape).
+2. **Generate**: add `--out out/` to write `out/<name>/exefs/13.0.2.pchtxt`, or leave it off
+   to print the patch. Narrower than 16:9 makes a `VertPlus-...` folder (extra view
+   above/below), wider makes a `HorPlus-...` folder (extra view to the sides).
+3. **Install** the generated folder into
+   `Android/data/dev.eden.eden_emulator/files/load/01006A800016E000/` and set Smash's
+   aspect ratio to **Stretch to window**, as in the quick install.
+4. Only one camera patch should be ticked in Add-ons at a time.
 
-| Screen | Mode | Factor (exact -> used) |
-|---|---|---|
-| 2480x2248 (Find N6) | Vert+ | 0.6206 -> 0.625 (+0.7%) |
-| 2048x1536 (4:3) | Vert+ | 0.75 -> 0.75 (exact) |
-| 3440x1440 (21:9) | Hor+ | 0.7442 -> 0.75 (+0.8%) |
-| 5120x1440 (32:9) | Hor+ | 0.5 -> 0.5 (exact) |
+To build a release-style zip instead: `SmashUltimate/src/package.sh --aspect 20:9`
+(takes the same screen options; output in `SmashUltimate/src/out/`).
 
-The factor has to be an ARM64 `FMOV` immediate, so the script picks the nearest one; under
-1% off is not visible.
+| Screen | Mode | Factor (exact -> used) | Tested in-game |
+|---|---|---|---|
+| 2480x2248 (OPPO Find N6 inner) | Vert+ | 0.6206 -> 0.625 (+0.7%) | Yes |
+| 2616x1140 (OPPO Find N6 folded/cover) | Hor+ | 0.7747 -> 0.78125 (+0.8%) | No |
+| 16:10 (tablets) | Vert+ | 0.9 -> 0.90625 (+0.7%) | No |
+| 4:3 | Vert+ | 0.75 -> 0.75 (exact) | No |
+| 20:9 (most phones, e.g. 2400x1080) | Hor+ | 0.8 -> 0.8125 (+1.6%) | No |
+| 3440x1440 (21:9) | Hor+ | 0.7442 -> 0.75 (+0.8%) | No |
+| 5120x1440 (32:9) | Hor+ | 0.5 -> 0.5 (exact) | No |
+
+The factor has to be an ARM64 `FMOV` immediate, so the script picks the nearest one and
+prints how far off it is. Up to ~1.6% (a circle 1.6% wider than tall) is very hard to notice.
 
 ## Reduce input delay (recommended)
 

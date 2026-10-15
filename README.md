@@ -102,7 +102,7 @@ External Python program: reads game memory (read-only) and presses Shift for you
 - **Vert+ on narrow screens** - on foldables/4:3/16:10 you keep the stock 16:9 left-right view and get extra view above and below, instead of the cramped, zoomed-in view other aspect mods give (they keep vertical FOV, so a 1.1:1 screen loses ~38% of the sides).
 - **Hor+ on wide screens** - on 21:9/32:9 the same generator keeps the vertical view and widens the sides (32:9 needs exactly x0.5; generated but not yet tested in-game).
 - **Game camera logic untouched** - only the final projection matrix changes; the camera's framing, zoom and stage logic still think it's 16:9, so it plays like stock.
-- **Your screen is a setting** - `make_vertplus.py --width W --height H` writes the patch for any resolution.
+- **Your screen is a setting** - `make_vertplus.py` writes the patch for any phone or monitor: `--width W --height H`, `--aspect 20:9`, or `--from-adb` to read the connected phone's screen.
 - **Lower input delay on Android** - documented and scripted Eden settings (VSync Mailbox, async presentation off, async GPU off) plus the ColorOS refresh-rate trap that held Eden at 60 Hz; measured display path ~9 ms at 120 Hz.
 
 Static `.pchtxt` patch for Smash Ultimate **13.0.2 only**; no game files are modified, toggle it in Eden's Add-ons. Menus/HUD are still drawn at 16:9 (stretched). See [SmashUltimate/dist/INSTALL.md](SmashUltimate/dist/INSTALL.md) and [SmashUltimate/notes.md](SmashUltimate/notes.md) (disassembly, every mod tried, the unfinished UI letterbox, and the latency findings).

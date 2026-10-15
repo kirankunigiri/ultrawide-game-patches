@@ -82,7 +82,8 @@ rearranges what's there. Two vector moves are folded into single instructions:
 ```
 
 The factor must be an FMOV immediate (+-n/16 * 2^r). `make_vertplus.py` picks the nearest
-one. For 0.6206 that's 0.625 (+0.7%), which you can't see. No usable literal exists within
+one. For 0.6206 that's 0.625 (+0.7%), which you can't see; the worst common case is 20:9/21:9
+at about 1.6%. No usable literal exists within
 the +-1 MB `ldr` range for an exact value.
 
 ### 3.4 Deliberately left alone
@@ -171,9 +172,14 @@ on, async GPU on/off, Stretch for Smash) and optionally ColorOS refresh "High"
 
 ## 6. Configuration
 
-- `make_vertplus.py --width W --height H` - screen in landscape. It picks Vert+ or Hor+.
-  The default is 2480x2248 (the tested target; this game's owner plays it on the Find N6
-  rather than at 32:9).
+- `make_vertplus.py` - give the screen shape once, any of: `--width W --height H` (pixels,
+  portrait or landscape), `--aspect 20:9` / `--aspect 2400x1080` / `--aspect 1.6`, or
+  `--from-adb` (reads `adb shell wm size` from the connected phone; on a foldable, the screen
+  that is active). It picks Vert+ (narrower than 16:9) or Hor+ (wider) and prints the FMOV
+  rounding error, which is 0% to ~1.6% for common screens. The default is 2480x2248, the
+  tested target; this game's owner plays it on the Find N6 rather than at 32:9. Example
+  factors for 21:9, 32:9 and phones are in `dist/INSTALL.md`.
+- `package.sh` takes the same screen options and builds a release-style zip.
 - Eden settings: `eden_settings.py [--async-gpu on|off] [--oppo-refresh-high] [--dry-run]`.
 
 ## 7. Install, uninstall, troubleshooting
