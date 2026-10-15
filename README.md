@@ -48,6 +48,7 @@ Adding or changing a fix (people or AI agents): follow [AGENTS.md](AGENTS.md).
 | [Gecko Gods](GeckoGods/) | Runtime mod (MelonLoader / Unity IL2CPP) | 5120×1440 (32:9) |
 | [Fatal Claw](FatalClaw/) | Runtime mod (UE4SS Lua / Unreal Engine 4.27) | 5120×1440 (32:9) |
 | [Ratchet & Clank: Rift Apart](RiftApart/) | Gameplay helper (external Python overlay): **new minimap**, **fixes shooting while sprinting**, **auto sprint / auto hover** | 5120×1440 (32:9) |
+| [Super Smash Bros. Ultimate](SmashUltimate/) | Emulator exefs patch (Eden `.pchtxt`, game 13.0.2): **Vert+ / Hor+ camera** for any aspect ratio, plus low-latency Eden settings | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
 
 ### Bastion - what's fixed (all at 32:9 / 5120×1440)
 
@@ -94,3 +95,14 @@ Not a rendering fix (the game already handles ultrawide): a gameplay helper that
 - **Starts with the game** - optional auto-start that launches the helper whenever the game runs.
 
 External Python program: reads game memory (read-only) and presses Shift for you, nothing injected and no game files modified. Game art is extracted once from your own install. Silent unless `--debug`. See [RiftApart/dist/INSTALL.md](RiftApart/dist/INSTALL.md) and [RiftApart/notes.md](RiftApart/notes.md).
+
+### Super Smash Bros. Ultimate - what's fixed (tested at 2480×2248 / OPPO Find N6, Eden on Android)
+
+- **Fills any screen with correct proportions** - patches the game's own projection builder (7 instructions), so the 3D picture fits your screen shape instead of a letterboxed or squished 16:9 frame. Use with Eden's per-game "Stretch to window".
+- **Vert+ on narrow screens** - on foldables/4:3/16:10 you keep the stock 16:9 left-right view and get extra view above and below, instead of the cramped, zoomed-in view other aspect mods give (they keep vertical FOV, so a 1.1:1 screen loses ~38% of the sides).
+- **Hor+ on wide screens** - on 21:9/32:9 the same generator keeps the vertical view and widens the sides (32:9 needs exactly x0.5; generated but not yet tested in-game).
+- **Game camera logic untouched** - only the final projection matrix changes; the camera's framing, zoom and stage logic still think it's 16:9, so it plays like stock.
+- **Your screen is a setting** - `make_vertplus.py --width W --height H` writes the patch for any resolution.
+- **Lower input delay on Android** - documented and scripted Eden settings (VSync Mailbox, async presentation off, async GPU off) plus the ColorOS refresh-rate trap that held Eden at 60 Hz; measured display path ~9 ms at 120 Hz.
+
+Static `.pchtxt` patch for Smash Ultimate **13.0.2 only**; no game files are modified, toggle it in Eden's Add-ons. Menus/HUD are still drawn at 16:9 (stretched). See [SmashUltimate/dist/INSTALL.md](SmashUltimate/dist/INSTALL.md) and [SmashUltimate/notes.md](SmashUltimate/notes.md) (disassembly, every mod tried, the unfinished UI letterbox, and the latency findings).

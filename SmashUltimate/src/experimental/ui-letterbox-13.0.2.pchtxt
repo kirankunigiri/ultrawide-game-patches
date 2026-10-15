@@ -1,0 +1,24 @@
+@nsobid-CBD5A9B56EA859BA11CA069B19B666101AE56F5A
+
+# Super Smash Bros. Ultimate [01006A800016E000] 13.0.2 - squeeze nn::ui2d projection vertically for Find N6
+// nn::ui2d::DrawInfo projection getter @0x44EA0 (copies DrawInfo+0x10, 64 bytes): scale matrix row 1 by 0.625.
+// Layouts are drawn into the middle ~62.5% of the 16:9 frame; with Eden "Stretch" they keep their 16:9 shape.
+// Pair with [Find N6 Vert+ camera]. Uses 2 bytes of inter-function padding.
+
+@flag print_values
+@flag offset_shift 0x100
+
+@enabled
+00044EA8 04902C1E
+00044EAC 2190844F
+00044EB0 200400AD
+00044EB4 220C01AD
+00044EB8 C0035FD6
+// + ortho camera path (0x3555164..0x3555188): s17 *= 0.625
+0355516C 4042201E
+03555170 13902C1E
+03555174 310A331E
+03555178 332A311E
+0355517C 5238271E
+03555188 2260136E
+@stop
