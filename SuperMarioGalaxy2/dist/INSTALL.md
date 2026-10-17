@@ -17,6 +17,9 @@ a setup that runs it cleanly at 60 FPS on a Snapdragon 8 Elite Gen 5 phone.
   [Galaxy-2-Patch](https://github.com/Wii-Patches/Galaxy-2-Patch) by quatric, so with Dolphin's
   emulated Wii Remote + Classic Controller every action is a button (spin on x, no shaking) and
   the touchscreen overlay shows a full controller. The star pointer stays on the touchscreen.
+- **Star pointer exactly under your finger:** a third patch turns off the game's pointer
+  smoothing, and the profiles carry calibrated IR settings, so the touch pointer lands where you
+  touch instead of trailing behind or overshooting toward the edges.
 - **Controls (optional):** gamepad profiles (Classic Controller, or Wii Remote + Nunchuk with the
   star pointer on the touchscreen, phone tilt or the right stick) and a tested touch layout.
 
@@ -135,7 +138,8 @@ python3 SuperMarioGalaxy2/src/make_preset.py --aspect 16:10 --out SB4E01.ini
 python3 SuperMarioGalaxy2/src/make_preset.py --from-adb --out SB4E01.ini     # reads the connected phone
 ```
 
-Options: `--show-fps` adds Dolphin's FPS/speed counters, `--wiimote-profile "Gamepad - Classic
+Options: `--stock-pointer` keeps the game's star-pointer smoothing (without it the star stops a
+little short of where it is aimed, which you notice with a touch pointer), `--show-fps` adds Dolphin's FPS/speed counters, `--wiimote-profile "Gamepad - Classic
 Controller"` makes the game load that controller profile automatically, `--classic-stick-pointer`
 puts the Classic Controller's star pointer on the right stick, `--no-classic` leaves the Classic
 Controller patch out. Use the screen you
@@ -167,7 +171,7 @@ All per-game (only Super Mario Galaxy 2 is affected):
 | Graphics mods | Off | The built-in "Bloom Blurred" mod draws a dark seam around the top-left quarter |
 | GPU texture decoding | On | Slight help at 2x on the Adreno 840; no texture problems seen |
 | Cheats | Off | Not needed (the fix uses Dolphin patches, not Gecko codes) |
-| Patches | Camera + UI + Classic Controller, enabled | The fix, and spin on a button with the Classic Controller |
+| Patches | Camera + UI + exact pointer + Classic Controller, enabled | The fix; star pointer without smoothing; spin on a button with the Classic Controller |
 
 ### Controller profiles
 
@@ -181,6 +185,13 @@ The three Wii Remote + Nunchuk profiles share this mapping: left stick = Nunchuk
 bits), L2 = Z, L1 = C, D-pad = D-pad, Triangle/Circle = 1/2, Share/Options/PS = -/+/Home, rumble
 on the controller.
 
+- **Pointer calibration (Classic Controller and Touch Pointer profiles):** `IR/Total Yaw = 18.7`,
+  `IR/Total Pitch = 18.8`, `IR/Vertical Offset = 15` (Dolphin's defaults are 25 / 20 / 10). With
+  the defaults the star moved about 1.34x as far as the finger sideways (the game maps the pointer
+  for 4:3), 1.065x vertically, and sat higher than the finger. Measured by tapping known spots and
+  finding the star in screenshots; tested in gameplay at 2480x2248. Menus may be slightly off,
+  because our UI patch squeezes their layout. The values don't depend on the screen shape (the
+  touch pointer and the game both span the full picture with Stretch to Window).
 - **Touch Pointer:** no pointer mapping; Dolphin's touch IR pointer moves it (needs the overlay
   shown, see Quick install step 5).
 - **Phone Tilt Pointer:** the pointer follows the phone's angle (gyro, absolute): return the
@@ -212,7 +223,7 @@ Compilation Mode **Hybrid Ubershaders**, Compile Shaders Before Starting off, As
 Use Edit Game Settings, not the Settings button in the in-game menu: the in-game menu changes
 Dolphin's global settings, which would affect every game.
 
-Patches: the patches are 376 memory writes; typing them into Edit Cheats > Patches by hand is
+Patches: the patches are 378 memory writes; typing them into Edit Cheats > Patches by hand is
 error-prone, so copy `SB4E01.ini` (or append its `[OnFrame]` and `[OnFrame_Enabled]` sections to
 your own `GameSettings/SB4E01.ini`).
 
@@ -229,6 +240,11 @@ your own `GameSettings/SB4E01.ini`).
   Controller patch is missing (an older `SB4E01.ini`, or one made with `--no-classic`). Use the
   current file. A save state made with the Nunchuk attached may need a restart from the title
   screen after switching.
+- **Star pointer is offset from your finger, more toward the edges:** the profile's IR values are
+  missing (a profile from before this version, or Dolphin's defaults). Set `IR/Total Yaw = 18.7`,
+  `IR/Total Pitch = 18.8`, `IR/Vertical Offset = 15`, or load the current profile.
+- **Star pointer trails your finger or stops just short of it:** the "Exact pointer (no
+  smoothing)" patch is off; use the current `SB4E01.ini`.
 - **Classic Controller star pointer doesn't follow touch:** "Classic Controller right-stick
   pointer" is enabled; turn it off, or use the right stick.
 - **Flickering or "weird frames" when moving:** the backend is OpenGL. Set Vulkan.

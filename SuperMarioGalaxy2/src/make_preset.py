@@ -21,6 +21,12 @@ every frame, so they also hold after loading any save state):
 
 Both values depend only on the screen shape, so the preset is generated per screen.
 
+Pointer: the game calls KPADSetPosParam(play radius 0.03, sensitivity 0.5), which smooths the
+star pointer and leaves it short of where it is aimed (moves smaller than the radius are mostly
+ignored). That suits a shaky hand on a real Wii Remote; with Dolphin's touch pointer it makes the
+star lag and stop a little away from the finger. A third patch sets radius 0 and sensitivity 1,
+so the star sits exactly where Dolphin aims it (--stock-pointer keeps the game's smoothing).
+
 It also adds the Classic Controller patch from Galaxy-2-Patch by quatric (MIT, vendored in
 third_party/galaxy2patch/): with Dolphin's emulated Wii Remote + Classic Controller, spin is a
 button (x) instead of a shake, the left stick moves Mario, and button prompts show buttons. Its
@@ -75,6 +81,10 @@ UI_Y_ORIG = 0xD0010014
 UI_Y_BACK = 0x8047BB58
 UI_CAVE = 0x80002B00
 UI_X_ADDR = 0x807E14F4        # read only at 0x8047BB40 (layout creation)
+
+# KPAD per-channel state (0x80750A00 + chan * 0x688); KPADSetPosParam (0x80547F90) stores the
+# pointer play radius at +0xF0 and sensitivity at +0xF4. The game passes 0.03 / 0.5 (0x804D0010).
+KPAD_POS_PARAM = 0x80750A00 + 0xF0
 
 # Galaxy-2-Patch Classic Controller data (see third_party/galaxy2patch/README.md).
 CLASSIC_JSON = Path(__file__).parent / "third_party" / "galaxy2patch" / "cc_SB4E01.json"
@@ -208,12 +218,19 @@ def classic_patches():
             ("Classic Controller right-stick pointer", stick)]
 
 
+def exact_pointer_patch():
+    """Wii Remote 1 pointer without the game's smoothing: play radius 0, sensitivity 1."""
+    return ("Exact pointer (no smoothing)", [(KPAD_POS_PARAM, f32_bits(0.0)), (KPAD_POS_PARAM + 4, f32_bits(1.0))])
+
+
 def render(aspect: float, label: str, show_fps: bool, profile: str | None,
-           classic: bool = True, stick_pointer: bool = False) -> str:
+           classic: bool = True, stick_pointer: bool = False, exact_pointer: bool = True) -> str:
     if abs(aspect - STOCK_ASPECT) < 1e-3:
         sys.exit("Screen is 16:9 - the game already fits it; no preset needed.")
     mode = "Vert+" if aspect < STOCK_ASPECT else "Hor+"
     patches = [(f"{name} for {label}", entries) for name, entries in (camera_patch(aspect), ui_patch(aspect))]
+    if exact_pointer:
+        patches.append(exact_pointer_patch())
     enabled = [name for name, _ in patches]
     if classic:
         cc, cc_stick = classic_patches()
@@ -252,6 +269,8 @@ def main():
     ap.add_argument("--show-fps", action="store_true", help="turn on Dolphin's FPS/speed counters")
     ap.add_argument("--wiimote-profile", help="controller profile to auto-load for Wii Remote 1 "
                                               "(name of a file in Config/Profiles/Wiimote/, without .ini)")
+    ap.add_argument("--stock-pointer", action="store_true",
+                    help="keep the game's star-pointer smoothing (lags behind the touch pointer)")
     ap.add_argument("--no-classic", action="store_true", help="leave out the Classic Controller patch")
     ap.add_argument("--classic-stick-pointer", action="store_true",
                     help="Classic Controller: move the star pointer with the right stick (off: touch/IR pointer)")
@@ -275,7 +294,7 @@ def main():
 
     if a.no_classic and a.classic_stick_pointer:
         ap.error("--classic-stick-pointer needs the Classic Controller patch")
-    text = render(aspect, label, a.show_fps, a.wiimote_profile, not a.no_classic, a.classic_stick_pointer)
+    text = render(aspect, label, a.show_fps, a.wiimote_profile, not a.no_classic, a.classic_stick_pointer, not a.stock_pointer)
     if not a.out:
         print(text, end="")
         return

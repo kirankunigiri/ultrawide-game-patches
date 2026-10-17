@@ -149,6 +149,31 @@ lessons from the switch:
 | Phone gyro into IR relative, accelerometer unmapped | Stopped vanishing; slow (relative speed capped at `STEP_PER_SEC = 2` units/s); drifted off center |
 | Phone gyro into Point (absolute), no accelerometer, Total Yaw 360, FOV 30 x 22.5 | Good: same angle = same spot; R3 recenters |
 | **Touch IR pointer** with the overlay shown but all buttons off | **Owner's pick.** Needs the overlay registered (`ShowInputOverlay = True`), otherwise touches never reach the IR override |
+| Touch IR pointer, default IR settings | Star drifts off the finger, more toward the edges, and trails slow drags |
+| Raising Total Pitch (20 -> 32.2) | Much worse (wrong direction, see below) |
+| **Exact pointer patch + IR 18.7 / 18.8 / 15 cm** | **Right under the finger** (owner-verified) |
+
+Why the touch pointer drifted, and the fix:
+
+1. Dolphin's touch pointer (Follow mode, `InputOverlayPointer.kt`) is already absolute: the
+   finger's position over the picture maps linearly to cursor -1..1 (with Stretch to Window the
+   "game aspect" is the window's). The error comes later.
+2. **Game smoothing.** SMG2 calls `KPADSetPosParam(chan, 0.03, 0.5)` from its controller
+   constructor (0x804D0010 stores 0.03 / 0.5 from r2+0x2D34 / r2+0x2D30; 0x804D016C passes them
+   to KPADSetPosParam at 0x80547F90). That sets play radius 0.03 and sensitivity 0.5 in the KPAD
+   state (0x80750A00 + chan * 0x688, +0xF0 / +0xF4). The star moves halfway toward its target per
+   sample and barely moves within the radius, so it stops short of the finger. The
+   "Exact pointer" `[OnFrame]` patch writes 0.0 / 1.0 there every frame (save-state proof).
+3. **Scale and offset.** Dolphin turns the cursor into Wii Remote yaw/pitch (Total Yaw/Pitch,
+   wiimote 2 m from the bar, raised by Vertical Offset; `Dynamics.cpp` `EmulatePoint`). To
+   measure, I injected taps at 15 known points with `adb shell input tap`, found the star in a
+   screenshot with OpenCV template matching (masked to the star's blue core and cyan rim), and
+   fitted per axis. Defaults (25 / 20 / 10 cm): x 1.34x (16:9 over 4:3), y 1.065x, about 160 px
+   high at mid-screen. Yaw 25/1.337 = 18.7 and pitch 20/1.065 = 18.8 fixed the scales. The offset
+   needed +2.85 deg of pitch bias, so h = 2 m * tan(atan(0.025) + 2.85 deg) = 15 cm. Result:
+   within 3-7 px over most of the screen, about 20 px at the bottom edge.
+4. Pitfall: after a relaunch the game sits at the main menu, and menus map the pointer
+   differently (our UI y-squeeze). Measure only in gameplay, from a save state.
 
 ### 4.7 Classic Controller (spin on a button)
 
@@ -220,13 +245,13 @@ Result: works in play on the Find N6, 60 FPS, spin on x and touch pointer.
 ## 7. Configuration
 
 - `src/make_preset.py` - per-screen preset (`--width W --height H`, `--aspect 20:9`,
-  `--from-adb`, `--show-fps`, `--wiimote-profile NAME`, `--classic-stick-pointer`,
+  `--from-adb`, `--show-fps`, `--wiimote-profile NAME`, `--stock-pointer`, `--classic-stick-pointer`,
   `--no-classic`, `--out FILE`). Default 2480x2248, Classic Controller patch included.
 - `src/third_party/galaxy2patch/` - pinned Galaxy-2-Patch Classic Controller data + MIT license.
 - `src/tools/dol.py` - DOL loader + disassembly helpers (capstone) used for the analysis.
 - `dist/SB4E01.ini` - generated preset for 2480x2248.
 - `dist/Profiles/Wiimote/` - `Gamepad - Classic Controller` (Wii Remote + Classic, touch
-  pointer), `Gamepad - Touch Pointer`, `Gamepad - Phone Tilt Pointer`
+  pointer), `Gamepad - Touch Pointer` (both with the calibrated IR 18.7 / 18.8 / 15 cm), `Gamepad - Phone Tilt Pointer`
   (FOV 30 x 22.5), `Gamepad - Right Stick Pointer` (relative, x2). Generic Wii Remote + Nunchuk
   profiles, usable in other games.
 - No debug switch: the preset writes no logs.
