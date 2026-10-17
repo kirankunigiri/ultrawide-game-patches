@@ -119,6 +119,11 @@ Find where the game applies its widescreen UI adjustment: code that checks a wid
 - Don't overwrite a shared constant (a global 1.0 used everywhere); hook the one store instead.
 - Scales are often applied when a layout is **created**, so test UI changes on newly opened
   screens.
+- **Alternative: hook `C_MTXOrtho`** (first instruction `fsubs f11,f4,f3`) when the game's 2D
+  goes through the SDK ortho builder. Widen spaces by shape (16:9-shaped ones around their center,
+  HUD layouts from their screen edge) and leave full-screen layers (often 640x480) alone. Worked
+  for Naruto Shippuden: Clash of Ninja Revolution III, see
+  [../NarutoShippudenCoNR3/notes.md](../NarutoShippudenCoNR3/notes.md).
 
 ## 8. Writing it as Dolphin patches
 

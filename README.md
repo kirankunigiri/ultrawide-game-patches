@@ -50,6 +50,7 @@ Adding or changing a fix (people or AI agents): follow [AGENTS.md](AGENTS.md).
 | [Ratchet & Clank: Rift Apart](RiftApart/) | Gameplay helper (external Python overlay): **new minimap**, **fixes shooting while sprinting**, **auto sprint / auto hover** | 5120×1440 (32:9) |
 | [Super Smash Bros. Ultimate](SmashUltimate/) | Emulator exefs patch (Eden `.pchtxt`, game 13.0.2): **Vert+ / Hor+ camera** for any aspect ratio, plus low-latency Eden settings | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
 | [Super Mario Galaxy 2](SuperMarioGalaxy2/) | Dolphin preset (per-game INI + `[OnFrame]` patches, SB4E01): **full-screen Vert+ / Hor+ 3D with a correctly shaped UI**, tested Adreno 840 settings, Classic Controller support (spin on a button, full touch overlay), gamepad + touch/tilt pointer profiles | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
+| [Naruto Shippuden: Clash of Ninja Revolution III](NarutoShippudenCoNR3/) | Dolphin preset (per-game INI + `[OnFrame]` patch, RNEEDA): **correctly shaped HUD and menus** on any screen shape (Widescreen Hack does the 3D) | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
 
 ### Bastion - what's fixed (all at 32:9 / 5120×1440)
 
@@ -122,3 +123,13 @@ Static `.pchtxt` patch for Smash Ultimate **13.0.2 only**; no game files are mod
 - **Stays in landscape on Android 16 foldables** - documented per-app override for Android 16 ignoring Dolphin's orientation lock on large screens.
 
 Drop-in per-game settings file, no game files modified. **USA (SB4E01) only**; Hor+ screens are generated but not yet tested in-game. See [SuperMarioGalaxy2/dist/INSTALL.md](SuperMarioGalaxy2/dist/INSTALL.md), [SuperMarioGalaxy2/notes.md](SuperMarioGalaxy2/notes.md), and the reusable method for other Wii games in [docs/wii-dolphin-fullscreen-guide.md](docs/wii-dolphin-fullscreen-guide.md).
+
+### Naruto Shippuden: Clash of Ninja Revolution III - what's fixed (tested at 2480×2248 / OPPO Find N6, Dolphin on Android)
+
+- **HUD and menus keep their shape on any screen** - one patch on the SDK's orthographic-matrix builder (`C_MTXOrtho`) widens the game's 16:9 2D spaces to your screen shape, so health bars, portraits, timer, menus and text are no longer stretched. Dolphin's Widescreen Hack keeps doing the 3D.
+- **Battle HUD stays at the top** - the battle HUD layout is widened from its top edge, so it sits where it did before the fix instead of drifting toward the center.
+- **Full-screen effects untouched** - fades and effect layers (a different 2D shape) still cover the whole picture; widening them left seams.
+- **Works with save states** - a Dolphin `[OnFrame]` patch, re-applied every frame.
+- **Your screen is a setting** - `make_preset.py` writes the per-game preset for any screen: `--width W --height H`, `--aspect 21:9`, or `--from-adb`.
+
+Drop-in per-game settings file, no game files modified. **USA (RNEEDA) only**; Hor+ screens are generated but not yet tested in-game. See [NarutoShippudenCoNR3/dist/INSTALL.md](NarutoShippudenCoNR3/dist/INSTALL.md) and [NarutoShippudenCoNR3/notes.md](NarutoShippudenCoNR3/notes.md).
