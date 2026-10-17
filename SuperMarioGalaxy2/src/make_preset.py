@@ -20,10 +20,17 @@ every frame, so they also hold after loading any save state):
     sides). Hor+ narrows x by (16/9)/aspect (gamemasterplc's 21:9 knob).
 
 Both values depend only on the screen shape, so the preset is generated per screen.
+
+It also adds the Classic Controller patch from Galaxy-2-Patch by quatric (MIT, vendored in
+third_party/galaxy2patch/): with Dolphin's emulated Wii Remote + Classic Controller, spin is a
+button (x) instead of a shake, the left stick moves Mario, and button prompts show buttons. Its
+right-stick star pointer is included as a separate patch that is off by default, so the
+touchscreen (or any Wii Remote IR mapping) keeps moving the pointer. With a Nunchuk attached the
+patch does nothing.
 The rest of the preset is the setup tested on an OPPO Find N6 (Adreno 840): Vulkan, 2x internal
 resolution, Hybrid Ubershaders, graphics mods off. See ../notes.md.
 
-Patch code lives in free low memory at 0x80002B00-0x80002E44 (0x80001800 is avoided: with
+The Classic Controller code lives at 0x80001820-0x80001C6C, ours at 0x80002B00-0x80002E44 (0x80001800 is avoided: with
 cheats off, Dolphin HLE-hooks it as the homebrew-reload stub and executing it ends emulation).
 
 Usage (give the screen once; portrait numbers are flipped to landscape):
@@ -32,13 +39,18 @@ Usage (give the screen once; portrait numbers are flipped to landscape):
   python3 make_preset.py --aspect 16:10                # ratio as W:H, WxH or a decimal (1.6)
   python3 make_preset.py --from-adb                    # read the connected phone's current screen
   python3 make_preset.py --aspect 21:9 --out SB4E01.ini
-  python3 make_preset.py --wiimote-profile "Gamepad - Touch Pointer"   # also auto-load a controller profile
+  python3 make_preset.py --wiimote-profile "Gamepad - Classic Controller"   # also auto-load a controller profile
+  python3 make_preset.py --classic-stick-pointer       # Classic Controller: star pointer on the right stick
+  python3 make_preset.py --no-classic                  # leave out the Classic Controller patch
 """
 import argparse
+import hashlib
+import json
 import re
 import struct
 import subprocess
 import sys
+from pathlib import Path
 
 GAME_ID = "SB4E01"            # Super Mario Galaxy 2, USA. Other regions have different addresses.
 STOCK_ASPECT = 16 / 9
@@ -64,6 +76,11 @@ UI_Y_BACK = 0x8047BB58
 UI_CAVE = 0x80002B00
 UI_X_ADDR = 0x807E14F4        # read only at 0x8047BB40 (layout creation)
 
+# Galaxy-2-Patch Classic Controller data (see third_party/galaxy2patch/README.md).
+CLASSIC_JSON = Path(__file__).parent / "third_party" / "galaxy2patch" / "cc_SB4E01.json"
+CLASSIC_SHA256 = "60aca03bdc45a59126d69caa3f67bca3140be919658087f82af24c001471afc1"
+CLASSIC_STICK_POINTER_NOTE = "Pointer right stick math hook"
+
 # Tested setup (OPPO Find N6, Snapdragon 8 Elite Gen 5 / Adreno 840, Dolphin 2609-83).
 CORE = {"GFXBackend": "Vulkan", "EnableCheats": "False"}   # no Gecko codes; patches only
 VIDEO = {
@@ -73,6 +90,7 @@ VIDEO = {
     "AspectRatio": "3",                    # Stretch to Window
     "wideScreenHack": "False",             # replaced by the camera patch (the hack hides storybook text)
     "EnableMods": "False",                 # the Bloom Blurred mod draws a seam on this setup
+    "EnableGPUTextureDecoding": "True",    # slight help at 2x on the Adreno 840, no texture issues seen
 }
 
 
@@ -174,11 +192,33 @@ def ui_patch(aspect: float):
     return f"Hor+ UI (layout x-scale {x:.4f})", [(UI_X_ADDR, f32_bits(x)), (UI_Y_HOOK, UI_Y_ORIG)]
 
 
-def render(aspect: float, label: str, show_fps: bool, profile: str | None) -> str:
+def classic_patches():
+    """Galaxy-2-Patch Classic Controller ops as (name, entries): the patch itself, then its
+    right-stick pointer hook. Without the hook the game keeps reading the Wii Remote IR pointer."""
+    raw = CLASSIC_JSON.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != CLASSIC_SHA256:
+        sys.exit(f"{CLASSIC_JSON} doesn't match the tested version (SHA-256 differs)")
+    main, stick = [], []
+    for op in json.loads(raw)["ops"]:
+        data = bytes.fromhex(op.get("data") or op["new"])
+        assert len(data) % 4 == 0
+        words = [(op["addr"] + i, int.from_bytes(data[i:i + 4], "big")) for i in range(0, len(data), 4)]
+        (stick if op.get("note") == CLASSIC_STICK_POINTER_NOTE else main).extend(words)
+    return [("Classic Controller (Galaxy-2-Patch by quatric)", main),
+            ("Classic Controller right-stick pointer", stick)]
+
+
+def render(aspect: float, label: str, show_fps: bool, profile: str | None,
+           classic: bool = True, stick_pointer: bool = False) -> str:
     if abs(aspect - STOCK_ASPECT) < 1e-3:
         sys.exit("Screen is 16:9 - the game already fits it; no preset needed.")
     mode = "Vert+" if aspect < STOCK_ASPECT else "Hor+"
-    patches = [camera_patch(aspect), ui_patch(aspect)]
+    patches = [(f"{name} for {label}", entries) for name, entries in (camera_patch(aspect), ui_patch(aspect))]
+    enabled = [name for name, _ in patches]
+    if classic:
+        cc, cc_stick = classic_patches()
+        patches += [cc, cc_stick]
+        enabled += [cc[0]] + ([cc_stick[0]] if stick_pointer else [])
     out = [
         f"# Super Mario Galaxy 2 [{GAME_ID}] - full-screen preset for {label} ({aspect:.4f}:1, {mode})",
         "# Generated by SuperMarioGalaxy2/src/make_preset.py (github.com/kirankunigiri/ultrawide-game-patches)",
@@ -193,10 +233,10 @@ def render(aspect: float, label: str, show_fps: bool, profile: str | None) -> st
         out += ["[Controls]", f"WiimoteProfile1 = {profile}"]
     out.append("[OnFrame]")
     for name, entries in patches:
-        out.append(f"${name} for {label}")
+        out.append(f"${name}")
         out += [f"0x{a:08X}:dword:0x{w:08X}" for a, w in entries]
     out.append("[OnFrame_Enabled]")
-    out += [f"${name} for {label}" for name, _ in patches]
+    out += [f"${name}" for name in enabled]
     out.append("")
     return "\n".join(out)
 
@@ -212,6 +252,9 @@ def main():
     ap.add_argument("--show-fps", action="store_true", help="turn on Dolphin's FPS/speed counters")
     ap.add_argument("--wiimote-profile", help="controller profile to auto-load for Wii Remote 1 "
                                               "(name of a file in Config/Profiles/Wiimote/, without .ini)")
+    ap.add_argument("--no-classic", action="store_true", help="leave out the Classic Controller patch")
+    ap.add_argument("--classic-stick-pointer", action="store_true",
+                    help="Classic Controller: move the star pointer with the right stick (off: touch/IR pointer)")
     ap.add_argument("--out", help="file to write (default: print to stdout)")
     a = ap.parse_args()
 
@@ -230,7 +273,9 @@ def main():
             w, h = 2480, 2248
         label, aspect = f"{w}x{h}", w / h
 
-    text = render(aspect, label, a.show_fps, a.wiimote_profile)
+    if a.no_classic and a.classic_stick_pointer:
+        ap.error("--classic-stick-pointer needs the Classic Controller patch")
+    text = render(aspect, label, a.show_fps, a.wiimote_profile, not a.no_classic, a.classic_stick_pointer)
     if not a.out:
         print(text, end="")
         return

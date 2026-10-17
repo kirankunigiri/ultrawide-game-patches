@@ -13,8 +13,12 @@ a setup that runs it cleanly at 60 FPS on a Snapdragon 8 Elite Gen 5 phone.
   it spreads to the sides.
 - **Save states work:** both are Dolphin patches, re-applied every frame, so they hold after
   loading any save state.
-- **Controls (optional):** gamepad profiles with the star pointer on the touchscreen, phone tilt
-  or the right stick.
+- **Classic Controller:** includes the Classic Controller patch from
+  [Galaxy-2-Patch](https://github.com/Wii-Patches/Galaxy-2-Patch) by quatric, so with Dolphin's
+  emulated Wii Remote + Classic Controller every action is a button (spin on x, no shaking) and
+  the touchscreen overlay shows a full controller. The star pointer stays on the touchscreen.
+- **Controls (optional):** gamepad profiles (Classic Controller, or Wii Remote + Nunchuk with the
+  star pointer on the touchscreen, phone tilt or the right stick) and a tested touch layout.
 
 | | |
 |---|---|
@@ -40,7 +44,7 @@ Dolphin's user folder on Android is `Android/data/org.dolphinemu.dolphinemu/file
 (on a PC it is Dolphin's `User` folder).
 
 1. Copy `SB4E01.ini` into `files/GameSettings/` (overwrite if it exists).
-2. Copy the `Profiles` folder into `files/Config/` (you get three files in
+2. Copy the `Profiles` folder into `files/Config/` (you get four files in
    `files/Config/Profiles/Wiimote/`).
 3. Start the game. Save states made before or after installing both work.
 
@@ -50,13 +54,62 @@ mid-scene keeps that scene's UI as it was when saved; anything opened after load
 For a gamepad, also:
 
 4. Dolphin > Settings > Wii Input > Wii Remote 1 > gear icon > **Profile** > load one of:
-   - `Gamepad - Touch Pointer` - buttons on the gamepad, star pointer by touching or dragging
-     on the screen (the tested favourite)
+   - `Gamepad - Classic Controller` - Wii Remote + Classic Controller: spin on a button, star
+     pointer by touching the screen, full touch overlay when no gamepad is connected (the tested
+     favourite, see [Classic Controller](#classic-controller-spin-on-a-button))
+   - `Gamepad - Touch Pointer` - Wii Remote + Nunchuk, star pointer by touching or dragging on
+     the screen
    - `Gamepad - Phone Tilt Pointer` - star pointer follows the phone's angle
    - `Gamepad - Right Stick Pointer` - star pointer on the right stick
-5. Touch pointer: keep the touch overlay **on** but hide all its buttons (in-game Back >
-   Overlay Controls > Toggle Controls > untick everything). The pointer only works while the
-   overlay is shown. For the other two profiles you can hide the overlay with **Toggle All**.
+5. Touch pointer: keep the touch overlay **on** (the pointer only works while it is shown). With
+   a gamepad you can untick its buttons (in-game Back > Overlay Controls > Toggle Controls). For
+   the tilt and right-stick profiles you can hide the overlay with **Toggle All**.
+
+### Classic Controller (spin on a button)
+
+Super Mario Galaxy 2 only accepts a Wii Remote + Nunchuk, and spins are a shake. The preset
+includes the Classic Controller patch from [Galaxy-2-Patch](https://github.com/Wii-Patches/Galaxy-2-Patch)
+(quatric, MIT; the version is pinned in `src/third_party/galaxy2patch/`), turned into Dolphin
+patches, so you can use Dolphin's **emulated Wii Remote + Classic Controller** instead. It also
+changes the on-screen prompts from shake icons to buttons. With a Nunchuk attached the patch does
+nothing, so the Nunchuk profiles still work.
+
+The star pointer stays on the touchscreen: the patch's own right-stick pointer is a separate patch
+that is off by default (`--classic-stick-pointer` turns it on, or enable "Classic Controller
+right-stick pointer" in Edit Game Settings > Patches).
+
+| Action | Classic Controller (touch overlay) | DualShock 4 (`Gamepad - Classic Controller`) |
+|---|---|---|
+| Move | Left stick | Left stick |
+| Jump | a or ZR | Cross |
+| Spin | **x** | Square or R1 |
+| Shoot star bits / back | b or R | R2 or Circle |
+| Crouch / ground pound / long jump | ZL | L2 |
+| Center camera (C) | y or L | L1 or Triangle |
+| Camera adjust | D-pad | D-pad |
+| Pause / - / HOME | + / - / HOME | Options / Share / PS |
+| Star pointer | touch the screen | touch the screen |
+
+**Tested touch layout** (2480x2248, overlay scale default): only the left stick, a/b/x/y, ZR and
+-/HOME/+ are shown.
+
+![Touch layout](touch-layout.png)
+
+To set it up: in-game Back > Overlay Controls > **Toggle Controls**, untick L, R, ZL, D-Pad and
+Right Stick; then **Edit Layout** and drag the buttons to match. Dolphin stores button positions
+in its private app data, so they can't be shipped as a file; the picture is the reference
+(approximate centers in pixels on the 2480x2248 screen: x 1758,1640 - y 2000,1410 - a 2213,1665 -
+b 1996,1923 - ZR's left edge at 2040, top at 830 - left stick 365,1705 - minus 1110,2025 -
+HOME 1310,1945 - plus 1508,2025). The toggles are in `files/Config/Dolphin.ini`:
+
+```
+[AndroidOverlayButtons]
+ButtonToggleClassicTriggerL = False
+ButtonToggleClassicTriggerR = False
+ButtonToggleClassicButtonZL = False
+ButtonToggleClassicDPad = False
+ButtonToggleClassicStickRight = False
+```
 
 ### Android 16 foldables/tablets: keep Dolphin in landscape
 
@@ -82,8 +135,10 @@ python3 SuperMarioGalaxy2/src/make_preset.py --aspect 16:10 --out SB4E01.ini
 python3 SuperMarioGalaxy2/src/make_preset.py --from-adb --out SB4E01.ini     # reads the connected phone
 ```
 
-Options: `--show-fps` adds Dolphin's FPS/speed counters, `--wiimote-profile "Gamepad - Touch
-Pointer"` makes the game load that controller profile automatically. Use the screen you
+Options: `--show-fps` adds Dolphin's FPS/speed counters, `--wiimote-profile "Gamepad - Classic
+Controller"` makes the game load that controller profile automatically, `--classic-stick-pointer`
+puts the Classic Controller's star pointer on the right stick, `--no-classic` leaves the Classic
+Controller patch out. Use the screen you
 actually play on in landscape (on a foldable, the screen that is open).
 
 | Screen | Mode | Camera | UI scale | Tested in-game |
@@ -110,13 +165,19 @@ All per-game (only Super Mario Galaxy 2 is affected):
 | Aspect ratio | Stretch to Window | Fills the screen; the patches keep it in proportion |
 | Widescreen Hack | **Off** | Replaced by the camera patch. The hack also squeezed the storybook frame and hid its narration text |
 | Graphics mods | Off | The built-in "Bloom Blurred" mod draws a dark seam around the top-left quarter |
+| GPU texture decoding | On | Slight help at 2x on the Adreno 840; no texture problems seen |
 | Cheats | Off | Not needed (the fix uses Dolphin patches, not Gecko codes) |
-| Patches | Camera + UI, enabled | The fix |
+| Patches | Camera + UI + Classic Controller, enabled | The fix, and spin on a button with the Classic Controller |
 
 ### Controller profiles
 
-All three are for an Android gamepad with the standard layout (tested with a Sony DualShock 4).
-Mapping: left stick = Nunchuk stick, Cross = A (jump), Square or R1 = spin, R2 = B (shoot star
+All four are for an Android gamepad with the standard layout (tested with a Sony DualShock 4).
+
+- **Classic Controller:** Wii Remote + Classic Controller, see the table in
+  [Classic Controller](#classic-controller-spin-on-a-button). Same buttons for the same actions as
+  the Nunchuk profiles; the touchscreen moves the pointer.
+
+The three Wii Remote + Nunchuk profiles share this mapping: left stick = Nunchuk stick, Cross = A (jump), Square or R1 = spin, R2 = B (shoot star
 bits), L2 = Z, L1 = C, D-pad = D-pad, Triangle/Circle = 1/2, Share/Options/PS = -/+/Home, rumble
 on the controller.
 
@@ -151,7 +212,7 @@ Compilation Mode **Hybrid Ubershaders**, Compile Shaders Before Starting off, As
 Use Edit Game Settings, not the Settings button in the in-game menu: the in-game menu changes
 Dolphin's global settings, which would affect every game.
 
-Patches: the two patches are 32 memory writes; typing them into Edit Cheats > Patches by hand is
+Patches: the patches are 376 memory writes; typing them into Edit Cheats > Patches by hand is
 error-prone, so copy `SB4E01.ini` (or append its `[OnFrame]` and `[OnFrame_Enabled]` sections to
 your own `GameSettings/SB4E01.ini`).
 
@@ -164,6 +225,12 @@ your own `GameSettings/SB4E01.ini`).
   it. Use the current `SB4E01.ini`.
 - **UI cut off at the sides or stretched after loading a save state:** that state was made
   mid-scene with a different UI setting; the next menu or scene is correct.
+- **Classic Controller buttons do nothing, or the game asks for a Nunchuk:** the Classic
+  Controller patch is missing (an older `SB4E01.ini`, or one made with `--no-classic`). Use the
+  current file. A save state made with the Nunchuk attached may need a restart from the title
+  screen after switching.
+- **Classic Controller star pointer doesn't follow touch:** "Classic Controller right-stick
+  pointer" is enabled; turn it off, or use the right stick.
 - **Flickering or "weird frames" when moving:** the backend is OpenGL. Set Vulkan.
 - **Wrong colors or flicker on an Adreno 8xx phone:** Dolphin is older than 2609-83 (for
   example the 2609a release). Update to a newer dev build.

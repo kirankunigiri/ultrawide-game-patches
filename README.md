@@ -49,7 +49,7 @@ Adding or changing a fix (people or AI agents): follow [AGENTS.md](AGENTS.md).
 | [Fatal Claw](FatalClaw/) | Runtime mod (UE4SS Lua / Unreal Engine 4.27) | 5120×1440 (32:9) |
 | [Ratchet & Clank: Rift Apart](RiftApart/) | Gameplay helper (external Python overlay): **new minimap**, **fixes shooting while sprinting**, **auto sprint / auto hover** | 5120×1440 (32:9) |
 | [Super Smash Bros. Ultimate](SmashUltimate/) | Emulator exefs patch (Eden `.pchtxt`, game 13.0.2): **Vert+ / Hor+ camera** for any aspect ratio, plus low-latency Eden settings | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
-| [Super Mario Galaxy 2](SuperMarioGalaxy2/) | Dolphin preset (per-game INI + `[OnFrame]` patches, SB4E01): **full-screen Vert+ / Hor+ 3D with a correctly shaped UI**, tested Adreno 840 settings, gamepad + touch/tilt pointer profiles | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
+| [Super Mario Galaxy 2](SuperMarioGalaxy2/) | Dolphin preset (per-game INI + `[OnFrame]` patches, SB4E01): **full-screen Vert+ / Hor+ 3D with a correctly shaped UI**, tested Adreno 840 settings, Classic Controller support (spin on a button, full touch overlay), gamepad + touch/tilt pointer profiles | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
 
 ### Bastion - what's fixed (all at 32:9 / 5120×1440)
 
@@ -116,7 +116,8 @@ Static `.pchtxt` patch for Smash Ultimate **13.0.2 only**; no game files are mod
 - **Works with save states** - both are Dolphin `[OnFrame]` patches, re-applied every frame, not Gecko codes (which save states roll back).
 - **Your screen is a setting** - `make_preset.py` writes the whole per-game preset for any screen: `--width W --height H`, `--aspect 20:9`, or `--from-adb`.
 - **Runs clean at 60 FPS on an Adreno 840** - Dolphin 2609-83+ (Adreno 8xx color fix), Vulkan (OpenGL flickers when moving), 2x internal resolution, Hybrid Ubershaders, no shader precompile at boot, graphics mods off (the Bloom Blurred mod draws a seam).
-- **Gamepad profiles** - star pointer on the touchscreen (overlay buttons hidden), on the phone's gyro (absolute; R3 recenters) or on the right stick. Generic Wii Remote + Nunchuk profiles.
+- **Classic Controller, spin on a button** - includes the Classic Controller patch from [Galaxy-2-Patch](https://github.com/Wii-Patches/Galaxy-2-Patch) (quatric, MIT) as Dolphin patches, so Dolphin's emulated Wii Remote + Classic Controller works: spin on x instead of a shake, a full touch overlay, button prompts instead of shake icons. The star pointer stays on the touchscreen. Includes a tested touch layout.
+- **Gamepad profiles** - Classic Controller, or Wii Remote + Nunchuk with the star pointer on the touchscreen (overlay buttons hidden), on the phone's gyro (absolute; R3 recenters) or on the right stick. Generic Wii Remote + Nunchuk profiles.
 - **Stays in landscape on Android 16 foldables** - documented per-app override for Android 16 ignoring Dolphin's orientation lock on large screens.
 
 Drop-in per-game settings file, no game files modified. **USA (SB4E01) only**; Hor+ screens are generated but not yet tested in-game. See [SuperMarioGalaxy2/dist/INSTALL.md](SuperMarioGalaxy2/dist/INSTALL.md), [SuperMarioGalaxy2/notes.md](SuperMarioGalaxy2/notes.md), and the reusable method for other Wii games in [docs/wii-dolphin-fullscreen-guide.md](docs/wii-dolphin-fullscreen-guide.md).

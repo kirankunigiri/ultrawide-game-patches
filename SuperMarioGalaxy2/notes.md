@@ -150,6 +150,47 @@ lessons from the switch:
 | Phone gyro into Point (absolute), no accelerometer, Total Yaw 360, FOV 30 x 22.5 | Good: same angle = same spot; R3 recenters |
 | **Touch IR pointer** with the overlay shown but all buttons off | **Owner's pick.** Needs the overlay registered (`ShowInputOverlay = True`), otherwise touches never reach the IR override |
 
+### 4.7 Classic Controller (spin on a button)
+
+The owner wanted the touch overlay to have every action the gamepad has. With Wii Remote +
+Nunchuk, spin is `Shake` (the gamepad had it on Square/R1), and Dolphin's Nunchuk overlay has no
+shake button. Dolphin's overlay buttons drive fixed emulated inputs (`InputOverrider` control
+IDs), so they can't be remapped to `Shake`.
+
+Existing mod: [Galaxy-2-Patch](https://github.com/Wii-Patches/Galaxy-2-Patch) (quatric, MIT) adds
+Classic Controller and GameCube controller support. The Classic Controller part:
+
+- Allows extension type 2 in the controller manager and disables the "connect a Nunchuk" panic
+  screens.
+- `btn_hook` (0x804CF5D8) rebuilds the Wii Remote button word from the Classic Controller buttons.
+  The game keeps a spin bit (0x0020, unused by WPAD) next to the real buttons; Classic x sets it.
+- The Classic left stick is copied in as the Nunchuk stick (accelerometer zeroed).
+- UI helpers swap shake prompts for button badges.
+- `ptr_math_hook` (0x804CF61C) replaces the IR pointer position with an integrated right-stick
+  position.
+
+Its prebuilt data (`tools/prebuilt/cc_SB4E01.json`) lists every write with the retail bytes it
+replaces, so it converts directly into `[OnFrame]` patches. Checked against our `main.dol`: every
+`orig` matches, and nothing overlaps our hooks. The code blob sits at 0x80001820-0x80001C6C, below
+our caves at 0x80002B00. The pinned commit is a02ef5d, newer than the v1.2 release (which has a
+title-screen crash); see `src/third_party/galaxy2patch/README.md`.
+
+- The right-stick pointer hook is split into its own patch, off by default. Without it, the
+  original code copies the IR position from the KPAD sample, so Dolphin's touch IR pointer still
+  works with a Classic Controller attached. The Classic overlay calls the same pointer code as the
+  Wii Remote overlays.
+- The GameCube controller part is not used. It lives at 0x80002400-0x80003000 (it would overlap
+  our caves), and Dolphin can attach a Classic Controller directly anyway.
+- Re-writing the blob every frame is free: Dolphin's patch engine only writes, and invalidates
+  the JIT cache, when a value differs (`PPCDebugInterface.cpp`, `ApplyMemoryPatch`).
+- Overlay layout: Dolphin's default Classic layout puts ZL/ZR and L/R at different heights and
+  x/y side by side. The owner rearranged it by hand (see `dist/touch-layout.png`). Positions are in
+  Dolphin's SharedPreferences in `/data/data`, which adb can't read: the app isn't debuggable, the
+  phone isn't rooted, and `adb backup` skips apps targeting API 31+. So the layout is documented
+  as a picture and measured centers. The toggles are in `Dolphin.ini [AndroidOverlayButtons]`.
+
+Result: works in play on the Find N6, 60 FPS, spin on x and touch pointer.
+
 ## 5. Other settings outside the preset
 
 - **Android 16 orientation:** `ignoreOrientationRequest` is true on the unfolded screen, so
@@ -179,10 +220,13 @@ lessons from the switch:
 ## 7. Configuration
 
 - `src/make_preset.py` - per-screen preset (`--width W --height H`, `--aspect 20:9`,
-  `--from-adb`, `--show-fps`, `--wiimote-profile NAME`, `--out FILE`). Default 2480x2248.
+  `--from-adb`, `--show-fps`, `--wiimote-profile NAME`, `--classic-stick-pointer`,
+  `--no-classic`, `--out FILE`). Default 2480x2248, Classic Controller patch included.
+- `src/third_party/galaxy2patch/` - pinned Galaxy-2-Patch Classic Controller data + MIT license.
 - `src/tools/dol.py` - DOL loader + disassembly helpers (capstone) used for the analysis.
 - `dist/SB4E01.ini` - generated preset for 2480x2248.
-- `dist/Profiles/Wiimote/` - `Gamepad - Touch Pointer`, `Gamepad - Phone Tilt Pointer`
+- `dist/Profiles/Wiimote/` - `Gamepad - Classic Controller` (Wii Remote + Classic, touch
+  pointer), `Gamepad - Touch Pointer`, `Gamepad - Phone Tilt Pointer`
   (FOV 30 x 22.5), `Gamepad - Right Stick Pointer` (relative, x2). Generic Wii Remote + Nunchuk
   profiles, usable in other games.
 - No debug switch: the preset writes no logs.
@@ -197,6 +241,9 @@ See [dist/INSTALL.md](dist/INSTALL.md).
 - **Hor+ screens** (20:9 phones, the Find N6 cover screen, 21:9, 32:9): generated, not tested.
 - Later storybook scenes and every galaxy were not individually checked; other special draw
   passes could need the same exclusion (bisect as in 4.3 if one breaks).
-- Motion-control stages (Wii Remote tilt) are not mapped in the profiles.
+- Motion-control stages (Wii Remote tilt) are not mapped in the profiles, and weren't tried with
+  the Classic Controller.
+- Classic Controller: tested in early gameplay (World 1) only; the Galaxy-2-Patch GameCube
+  controller part is not included.
 - One Vulkan driver crash (`vulkan.adreno.so` in `QueueSubmit`) was seen around a screen
   rotation; locking orientation avoids it.
