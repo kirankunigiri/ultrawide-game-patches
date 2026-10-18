@@ -48,7 +48,7 @@ Adding or changing a fix (people or AI agents): follow [AGENTS.md](AGENTS.md).
 | [Gecko Gods](GeckoGods/) | Runtime mod (MelonLoader / Unity IL2CPP) | 5120×1440 (32:9) |
 | [Fatal Claw](FatalClaw/) | Runtime mod (UE4SS Lua / Unreal Engine 4.27) | 5120×1440 (32:9) |
 | [Ratchet & Clank: Rift Apart](RiftApart/) | Gameplay helper (external Python overlay): **new minimap**, **fixes shooting while sprinting**, **auto sprint / auto hover** | 5120×1440 (32:9) |
-| [Super Smash Bros. Ultimate](SmashUltimate/) | Emulator exefs patch (Eden `.pchtxt`, game 13.0.2): **Vert+ / Hor+ camera** for any aspect ratio, plus low-latency Eden settings | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
+| [Super Smash Bros. Ultimate](SmashUltimate/) | Emulator exefs patch (Eden `.pchtxt`, game 13.0.2): **Vert+ / Hor+ camera and correctly shaped UI** for any aspect ratio, plus low-latency Eden settings | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
 | [Super Mario Galaxy 2](SuperMarioGalaxy2/) | Dolphin preset (per-game INI + `[OnFrame]` patches, SB4E01): **full-screen Vert+ / Hor+ 3D with a correctly shaped UI**, tested Adreno 840 settings, Classic Controller support (spin on a button, full touch overlay), gamepad + touch/tilt pointer profiles | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
 | [Naruto Shippuden: Clash of Ninja Revolution III](NarutoShippudenCoNR3/) | Dolphin preset (per-game INI + `[OnFrame]` patch, RNEEDA): **correctly shaped HUD and menus** on any screen shape (Widescreen Hack does the 3D) | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
 
@@ -103,11 +103,12 @@ External Python program: reads game memory (read-only) and presses Shift for you
 - **Fills any screen with correct proportions** - patches the game's own projection builder (7 instructions), so the 3D picture fits your screen shape instead of a letterboxed or squished 16:9 frame. Use with Eden's per-game "Stretch to window".
 - **Vert+ on narrow screens** - on foldables/4:3/16:10 you keep the stock 16:9 left-right view and get extra view above and below, instead of the cramped, zoomed-in view other aspect mods give (they keep vertical FOV, so a 1.1:1 screen loses ~38% of the sides).
 - **Hor+ on wide screens** - on 21:9/32:9 the same generator keeps the vertical view and widens the sides (32:9 needs exactly x0.5; generated but not yet tested in-game).
+- **UI keeps its shape** - a second patch in the SDK's `nn::ui2d::DrawInfo::SetProjectionMtx` (the one place every UI projection is stored, for pictures and text) squeezes menus, text and the fight HUD back to 16:9 in a band across the screen, and clips UI to the stock 16:9 frame so elements the game parks just off-screen stay hidden. Fighter name tags stay lined up with the fighters.
 - **Game camera logic untouched** - only the final projection matrix changes; the camera's framing, zoom and stage logic still think it's 16:9, so it plays like stock.
 - **Your screen is a setting** - `make_vertplus.py` writes the patch for any phone or monitor: `--width W --height H`, `--aspect 20:9`, or `--from-adb` to read the connected phone's screen.
 - **Lower input delay on Android** - documented and scripted Eden settings (VSync Mailbox, async presentation off, async GPU off) plus the ColorOS refresh-rate trap that held Eden at 60 Hz; measured display path ~9 ms at 120 Hz.
 
-Static `.pchtxt` patch for Smash Ultimate **13.0.2 only**; no game files are modified, toggle it in Eden's Add-ons. Menus/HUD are still drawn at 16:9 (stretched). See [SmashUltimate/dist/INSTALL.md](SmashUltimate/dist/INSTALL.md) and [SmashUltimate/notes.md](SmashUltimate/notes.md) (disassembly, every mod tried, the unfinished UI letterbox, and the latency findings).
+Static `.pchtxt` patch for Smash Ultimate **13.0.2 only**; no game files are modified, toggle it in Eden's Add-ons. The fight HUD sits at the bottom of the 16:9 band rather than the screen edge. See [SmashUltimate/dist/INSTALL.md](SmashUltimate/dist/INSTALL.md) and [SmashUltimate/notes.md](SmashUltimate/notes.md) (disassembly, every mod tried, how the UI fix was found, and the latency findings).
 
 ### Super Mario Galaxy 2 - what's fixed (tested at 2480×2248 / OPPO Find N6, Dolphin on Android)
 

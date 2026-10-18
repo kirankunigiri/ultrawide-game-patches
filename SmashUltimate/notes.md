@@ -1,7 +1,8 @@
-# Super Smash Bros. Ultimate - Aspect Ratio Camera Patch Notes
+# Super Smash Bros. Ultimate - Aspect Ratio Camera + UI Patch Notes
 
-Vert+ / Hor+ camera for Smash Ultimate under Eden, built from disassembly of the game's
-projection code, plus what we learned about input latency on Android.
+Vert+ / Hor+ camera and a matching UI fix for Smash Ultimate under Eden, built from
+disassembly of the game's projection code, plus what we learned about input latency on
+Android.
 
 ## 1. The game
 
@@ -88,8 +89,7 @@ the +-1 MB `ldr` range for an exact value.
 
 ### 3.4 Deliberately left alone
 
-- **UI**: Eden's Stretch stretches the whole final frame, and the UI is drawn in it at 16:9.
-  The patch can't fix the UI (see 4.3).
+- **UI**: handled by a second patch (4.4).
 - **Culling**: the game's 16:9 frustum culling is unchanged. No pop-in was seen at the
   extended top/bottom edges in testing, but it's possible on some stages.
 - Every perspective camera uses this builder, so results screens and other 3D scenes get the
@@ -105,12 +105,13 @@ the +-1 MB `ldr` range for an exact value.
 | 4 | Our full conversion of Fl4sh's original (all 31 `0x4018E38E` halves -> `0x3F8D35C0`) | Looked identical to #3; the UI constant change has no visible effect |
 | 5 | **This patch (Vert+)** | Final: full screen, correct shape, stock left-right view |
 | 6 | UI letterbox (`src/experimental/ui-letterbox-13.0.2.pchtxt`) | Partial; see 4.3 |
+| 7 | **UI fix in `DrawInfo::SetProjectionMtx`** | Final; see 4.4 |
 
 Fl4sh's pack has two 21:9 families. "Ultrawide Camera" (4 lines: the aspect `fmov`, the UI
 float, and two culling `fmov`s) widens the view. "Original Camera" (~31 MOVZ/MOVK pairs
 loading 2.3889 in ~15 functions) keeps the zoom.
 
-### 4.3 UI letterbox attempt (unfinished, not shipped)
+### 4.3 First UI letterbox attempt (superseded by 4.4)
 
 The goal: keep Stretch on, but draw the UI squeezed vertically by the same factor, so menus
 look like 16:9 with bars while fights stay full screen.
@@ -129,6 +130,61 @@ look like 16:9 with bars while fights stay full screen.
   `+0x10/+0x30`, and none of them is a ui2d setter.
 - **Next step:** find `nn::font` RTTI and its constant-buffer setup. Even when finished, the
   HUD would sit inside the middle band.
+
+### 4.4 The UI fix
+
+**Where.** `nn::ui2d::DrawInfo::SetProjectionMtx` (`0x44D60`) copies a 4x4 into
+`DrawInfo+0x10`, and that copy is what everything reads: pictures through `0x44EA0`, and text
+directly (`TextBox` builds its font constant buffer at `0x62F78`: `add x20,x20,#0x10` ->
+`0x79150` -> `0x79380`, `ldp q1,q6,[x2]`). 4.3 patched the `0x44EA0` copy, which text never
+uses, so the HUD split apart. The setter has three callers: the game's UI renderer
+(`0x3775070`, its `DrawInfo` lives at `renderer+0x50`) and `nn::ui2d::Capture` (`0x43400`,
+called at `0x434D8` / `0x43540`; render-to-texture, so it must stay stock).
+
+**The patch** replaces the setter (17 words + 3 words of padding; no code cave):
+
+```
+ldp  q0,q1,[x1] ; ldp q2,q3,[x1,#0x20]        ; rows, row-major, row 3 = w
+adr  x9, 0x43400 ; sub x9,x30,x9 ; cmp x9,#0x200 ; b.lo store   ; Capture: copy as is
+fadd v2.4s, vR.4s, v3.4s ; fmov v6.4s,#0.5 ; fmul v2.4s,v2.4s,v6.4s   ; z = (stock y + w)/2
+ldr  s4, k ; fmul vR.4s, vR.4s, v4.s[0]        ; y (Vert+) or x (Hor+) *= k
+store: stp q0,q1,[x0,#0x10] ; stp q2,q3,[x0,#0x30] ; ret
+k:   .float aspect/(16/9)  (Vert+)  or  (16/9)/aspect  (Hor+)
+```
+
+- **Squeeze:** row 1 (Vert+) or row 0 (Hor+) times k, so the UI keeps its 16:9 shape in a
+  band. The UI renderer's matrix is row-major with translation in the 4th column (its ortho
+  path builds row 0 as `(2/(r-l), 0, 0, -(r+l)/(r-l))`), so this scales around the center.
+- **Clip to the stock frame:** squeezing reveals UI the game parks just outside the 16:9
+  frame. In fights and on the results screen that showed as two solid yellow bars at the band
+  edges (absent with the camera patch alone, so they are UI). Setting the z row to
+  `(stock row + w)/2` puts z outside 0..w exactly where the stock y/x was outside -1..1, so
+  the GPU's own near/far clipping removes it. The game uses 0..1 depth: `z = stock row` (for
+  -1..1) cut off the bottom half of the UI. UI doesn't use depth, so nothing else changes.
+- **Exact factor:** k is a literal next to the code (`ldr s4`), not an FMOV immediate.
+
+**The fight HUD** sits at the bottom of the 16:9 band, not the screen edge. Finding a way to
+move only the HUD:
+
+| Test | Result |
+|---|---|
+| Shift by the renderer's projection kind (caller's `w19`, kept in the leaf: 1 = ortho from the layout rect at `0x37748E0`) | Menus and HUD both use the other kind |
+| Shift by the renderer's draw pass (`renderer+0x63C`, read as `[x0,#0x5EC]`) | Menus/movies are pass 1; the fight HUD, the fighter name tags and the character-select roster are pass 0; the CSS header/panels another pass |
+| Using an "unused" function (`0x2C5620`, no references found by a full scan) as a code cave | The game crashed at boot (`Unmapped InvalidateNCE @0x0`, exit 2162-0001): it is called after all. Don't reuse code that a scan calls dead |
+
+The name tags must stay locked to the fighters, i.e. move with the 3D camera, so moving the
+whole pass 0 would detach them. Options considered (owner chose to keep the centered band):
+anchor the whole picture (camera + UI) to the bottom edge; do that only in fights (needs an
+"in battle" signal); or move only the damage panes per draw call (needs code in several draw
+paths and a safe cave - the vector-graphics star-path generator at `0x72670`, reachable only
+through its vtable, is a candidate; keep its first word a `ret`).
+
+**Testing method (no save states in Eden):** an Outpost agent screen sized like the phone
+(2480x2248, 520 dpi), Eden's touch overlay at 0% opacity driven with `adb shell input -d
+<display> swipe x y x y 150` (a uinput gamepad would type into the owner's foreground app:
+agent displays can't take input focus), launched with Eden's main screen first and then the
+VIEW intent so the 13.0.2 update is applied, and a script that checks the emulation activity
+is on top of the agent display before every batch of inputs.
 
 ## 5. Input latency on Android (what we learned)
 
@@ -179,6 +235,8 @@ on, async GPU on/off, Stretch for Smash) and optionally ColorOS refresh "High"
   rounding error, which is 0% to ~1.6% for common screens. The default is 2480x2248, the
   tested target; this game's owner plays it on the Find N6 rather than at 32:9. Example
   factors for 21:9, 32:9 and phones are in `dist/INSTALL.md`.
+- The UI fix is added to the same `.pchtxt` (one mod folder); `--no-ui` writes the camera
+  patch only.
 - `package.sh` takes the same screen options and builds a release-style zip.
 - Eden settings: `eden_settings.py [--async-gpu on|off] [--oppo-refresh-high] [--dry-run]`.
 
@@ -190,7 +248,7 @@ See [dist/INSTALL.md](dist/INSTALL.md). Release zips are built by `src/package.s
 ## 8. Not covered
 
 - Other game versions (13.0.1/3/4/5). The offsets differ; port with the method below.
-- UI/HUD correction (4.3).
+- Moving the fight HUD to the screen's bottom edge (4.4).
 - Hor+ hasn't been tested in-game yet.
 - Pop-in in the extended view areas, if any stage culls aggressively.
 
