@@ -1,0 +1,301 @@
+From 41e0382594a4575aa694151fe60e8bfb39c348f5 Mon Sep 17 00:00:00 2001
+From: Kiran Kunigiri <kirankunigiri@gmail.com>
+Date: Mon, 19 Oct 2026 01:44:44 -0700
+Subject: [PATCH] Fill screens squarer than 3:2 (foldables, tablets) in IB2 and
+ IB3
+
+On a near-square screen (e.g. a foldable's inner display) both games
+kept a 3:2 or 16:9 3D view with big black bars above and below.
+
+- app.cpp: give IB2 the window's shape when it is squarer than 3:2
+  (with the Full screen setting), as IB3 already gets.
+- widescreen.cpp, both games: SwordCamera only gives the view the
+  screen's shape when bIsWideAspectRatio (InitializeFor: aspect > 1.5);
+  the threshold becomes 0.5 and UpdateViewTarget's FOV scaling becomes
+  FMax (same-size tokens), so the view fills the screen with the 3:2
+  field of view and more above and below.
+- IB2: AdjustHUDRenderSize's 1.7 bound is lowered too so the HUD
+  covers the screen; menu backdrops are scaled for the taller view.
+- IB3: the HUD keeps its own 3:2 iPad layout (laying it over the whole
+  screen misplaces the move circles away from where they take taps);
+  RenderIPadBars' two 80-high bars become 0 high and the exploring
+  vignette is skipped. Served through devipa.cpp's SwordGame.xxx copy,
+  which owns that file for IB3.
+- Each game falls back to its stock layout if the patterns are not found.
+
+Tested on a 2480x2248 screen: IB2 world, cutscene, menus, character
+screen, fight; IB3 cutscenes, exploring, fight (move tap, block).
+---
+ src/game/devipa.cpp      |   7 +-
+ src/game/game.h          |  10 ++-
+ src/game/widescreen.cpp  | 136 +++++++++++++++++++++++++++++++++++----
+ src/port/android/app.cpp |  10 ++-
+ 4 files changed, 146 insertions(+), 17 deletions(-)
+
+diff --git a/src/game/devipa.cpp b/src/game/devipa.cpp
+index 7b4be6c..4b1db91 100644
+--- a/src/game/devipa.cpp
++++ b/src/game/devipa.cpp
+@@ -4,6 +4,7 @@
+ // showed. When the package has that shape (Init followed by nothing, and an unused block between two
+ // exports that starts like Init's function header), the game is served a copy whose Init points at the
+ // mod's block. The installed files are not changed; the copy goes to Library/Caches/port.
++// On screens squarer than 3:2 the copy (of any IB3 .ipa) also carries fill_ib3_squarer_screen's patch.
+ #include "game/game.h"
+ #include "game/unreal.h"
+ #include "libc/vfs.h"
+@@ -173,8 +174,10 @@ void install_dev_ipa_fix() {
+     std::string data((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+     std::string dir = vfs::host_home() + "/Library/Caches/port", path = dir + "/SwordGame.xxx";
+     std::error_code ec;
+-    if (data.empty() || !repoint_options_init(data)) {
+-        std::filesystem::remove(path, ec);  // a copy from a dev mod .ipa installed before
++    bool repointed = !data.empty() && repoint_options_init(data);
++    bool squarer = !data.empty() && fill_ib3_squarer_screen(data);
++    if (!repointed && !squarer) {
++        std::filesystem::remove(path, ec);  // a copy from a dev mod .ipa installed before, or a squarer screen
+         return;
+     }
+     std::filesystem::create_directories(dir, ec);
+diff --git a/src/game/game.h b/src/game/game.h
+index b6a6d15..51777b1 100644
+--- a/src/game/game.h
++++ b/src/game/game.h
+@@ -56,11 +56,17 @@ void install_subtitles(const macho::Image& img);
+ // Both games: settings look_sensitivity scales looking around by touch (game/look.cpp).
+ void install_look_sensitivity(const macho::Image& img);
+ 
+-// IB2 on screens longer than 16:9: serves patched copies of its HUD layout script and
+-// menu backdrops. If the patch does not apply, the emulated screen goes back to 16:9.
++// IB2 on screens longer than 16:9 or squarer than 3:2: serves patched copies of its HUD layout script
++// (and, on squarer screens, its camera) and menu backdrops. If the patch does not apply, the emulated
++// screen goes back to 16:9 (longer screens) or the game keeps its own iPad layout (squarer screens).
+ void install_widescreen();
+ // IB3 "Dev Mod" .ipa: its developer Options rows are orphaned in SwordGame.xxx; serve a repaired copy (game/devipa.cpp).
++// The same copy carries fill_ib3_squarer_screen's patch on screens squarer than 3:2.
+ void install_dev_ipa_fix();
++// IB3 on screens squarer than 3:2: patches its SwordGame.xxx so the 3D view fills the screen (its HUD keeps
++// its own iPad layout; game/widescreen.cpp). False, with `pkg` unchanged, on other screens or when the script
++// is not the expected one.
++bool fill_ib3_squarer_screen(std::string& pkg);
+ // IB2: keeps the item caches loaded while the Options list is open, so its give-all cheat works (game/devipa.cpp).
+ void options_item_caches_tick(cpu::Thread& t);
+ 
+diff --git a/src/game/widescreen.cpp b/src/game/widescreen.cpp
+index fa2af70..5513003 100644
+--- a/src/game/widescreen.cpp
++++ b/src/game/widescreen.cpp
+@@ -1,10 +1,24 @@
+-// IB2 on phones longer than 16:9. Its script (GameViewportClient.AdjustHUDRenderSize)
+-// lays the HUD out over the whole screen only for aspect ratios in (1.7, 1.8) and exactly 1.5; any
+-// other shape is taken for an iPad and gets a 3:2 HUD as wide as the screen, which on a 19.5:9 phone
+-// runs off the top and bottom (and the touch zones follow it). The game is served a copy of its
+-// script package with the 1.8 limit raised, so wider screens take the 16:9 branch all the way through.
++// IB2 on phones longer than 16:9, and IB2 and IB3 on screens squarer than 3:2 (foldables, tablets).
++// IB2's script (GameViewportClient.AdjustHUDRenderSize) lays the HUD out over the whole screen only for
++// aspect ratios in (1.7, 1.8) and exactly 1.5; any other shape is taken for an iPad and gets a 3:2 HUD and
++// view as wide as the screen, which on a 19.5:9 phone runs off the top and bottom (and the touch zones
++// follow it), and on a squarer screen leaves black bars above and below. The game is served a copy of
++// its script package with the 1.8 limit raised (and, on squarer screens, the 1.7 limit lowered), so
++// those screens take the 16:9 branch all the way through.
++// On squarer screens the 3D view needs a patch of its own: SwordCamera.UpdateViewTarget gives the view
++// the screen's shape (and widens its field of view to match) only when bIsWideAspectRatio, which
++// SwordCamera.InitializeFor sets for screens wider than 3:2; any other screen gets the camera's fixed
++// 3:2 view, letterboxed. The threshold is lowered so the view takes the screen's shape, and the field
++// of view is kept as it is at 3:2, so the view shows what it does at 3:2 and more above and below.
++// IB3 has the same camera code. Its HUD keeps its own iPad layout, a 3:2 area across the middle of the
++// screen (letting its AdjustHUDRenderSize lay the HUD over the whole screen instead put the markers it
++// draws over the world, like the move circles, in the wrong place, away from where they react to a
++// tap); only the black bars it draws above and below that area are removed, and the exploring vignette,
++// which covers only that area, is skipped. IB3's patched SwordGame.xxx is written by game/devipa.cpp,
++// which serves that package for the Dev Mod .ipa too.
+ // The menus' swirl backdrops (two flat meshes per menu camera in IB2_InventoryMenu) only cover a
+-// 16:9 view, and the camera widens its view with the screen: they are scaled up to match.
++// 16:9 view, and the camera widens (or, keeping its width, heightens) its view with the screen: they
++// are scaled up to match.
+ // The installed game files are not changed; patched copies go to Library/Caches/port.
+ #include "game/game.h"
+ #include "libc/vfs.h"
+@@ -22,12 +36,24 @@ namespace game {
+ namespace {
+ 
+ constexpr double kWidestKnown = 1.8;  // the game's own upper limit for its 16:9 layout
++constexpr double kSquarestPhone = 1.5;  // below this IB2 gets the screen's own shape too (port/android/app.cpp)
+ constexpr u8 kFloatConst = 0x1e;      // UnrealScript bytecode: EX_FloatConst
+ 
+ std::string bytes_of(const void* p, size_t n) { return std::string((const char*)p, n); }
+ 
+ std::string float_const(float v) { return (char)kFloatConst + bytes_of(&v, 4); }
+ 
++// Offsets where `pattern` matches `data`; '?' bytes in `mask` match anything.
++std::vector<size_t> find_masked(const std::string& data, const std::string& pattern, const std::string& mask) {
++    std::vector<size_t> hits;
++    for (size_t at = 0; at + pattern.size() <= data.size(); at++) {
++        size_t i = 0;
++        while (i < pattern.size() && (mask[i] == '?' || data[at + i] == pattern[i])) i++;
++        if (i == pattern.size()) hits.push_back(at);
++    }
++    return hits;
++}
++
+ std::vector<size_t> find_all(const std::string& data, const std::string& pattern) {
+     std::vector<size_t> hits;
+     for (size_t at = data.find(pattern); at != std::string::npos; at = data.find(pattern, at + 1)) hits.push_back(at);
+@@ -58,14 +84,87 @@ s32 name_index(const std::string& pkg, const std::string& name) {
+ }
+ 
+ // SwordGame.xxx: "AspectRatio > 1.7 && AspectRatio < 1.8" in AdjustHUDRenderSize. The 1.8 is the
+-// only one in the package's script; the 1.7 comes a few bytes before it.
+-bool raise_hud_limit(std::string& pkg) {
++// only one in the package's script; the 1.7 comes a few bytes before it. `squarer` also lowers the 1.7.
++bool widen_hud_range(std::string& pkg, bool squarer) {
+     std::vector<size_t> hits = find_all(pkg, float_const(1.8f));
+     if (hits.size() != 1) return false;
+     size_t low = pkg.rfind(float_const(1.7f), hits[0]);
+     if (low == std::string::npos || hits[0] - low > 32) return false;
+     float widest = 100.0f;
+     memcpy(&pkg[hits[0] + 1], &widest, 4);
++    if (squarer) {
++        float squarest = 0.5f;
++        memcpy(&pkg[low + 1], &squarest, 4);
++    }
++    return true;
++}
++
++// SwordGame.xxx, for screens squarer than 3:2 (see the top of this file). InitializeFor ends with
++//     bIsWideAspectRatio = DeviceAspectRatio > 1.5; return;
++// and UpdateViewTarget, when bIsWideAspectRatio, sets
++//     OutVT.POV.FOV = OutVT.POV.FOV / OutVT.AspectRatio * DeviceAspectRatio;
++//     OutVT.AspectRatio = DeviceAspectRatio;
++// The 1.5 becomes 0.5, and the FOV line's / and * become FMax: FMax(FMax(FOV, AspectRatio), DeviceAspectRatio)
++// is the FOV itself (degrees against ratios near 1), so the field of view stays as it is. Only one-byte
++// tokens and a float constant change: an object reference grows to 8 bytes in memory, and the loaded
++// script must keep its size.
++bool fill_squarer_view(std::string& pkg) {
++    const u8 kLetBool = 0x14, kBoolVariable = 0x2d, kInstanceVariable = 0x01, kEndFunctionParms = 0x16,
++             kReturn = 0x04, kNothing = 0x0b, kEndOfScript = 0x53, kLet = 0x0f, kStructMember = 0x35,
++             kGreaterFloat = 0xb1, kMultiplyFloat = 0xab, kDivideFloat = 0xac, kFMax = 0xf5;
++    std::string end_of_init = std::string() + (char)kLetBool + (char)kBoolVariable + (char)kInstanceVariable +
++                              "????" + (char)kGreaterFloat + (char)kInstanceVariable + "????" + float_const(1.5f) +
++                              (char)kEndFunctionParms + (char)kReturn + (char)kNothing + (char)kEndOfScript;
++    std::string init_mask = "xxx????xx????xxxxxxxxx";
++    std::vector<size_t> init = find_masked(pkg, end_of_init, init_mask);
++    if (init.size() != 1) return false;
++    std::string device_aspect = pkg.substr(init[0] + 9, 4);  // the instance variable compared with 1.5
++    // In UpdateViewTarget: "... * DeviceAspectRatio) ; OutVT.<...> =" -- only the FOV line has DeviceAspectRatio
++    // followed by the end of the multiplication and another assignment to a struct member.
++    std::string in_fov = std::string() + (char)kInstanceVariable + device_aspect + (char)kEndFunctionParms + (char)kLet +
++                         (char)kStructMember;
++    std::vector<size_t> fov = find_all(pkg, in_fov);
++    if (fov.size() != 1) return false;
++    const std::string ops = std::string() + (char)kMultiplyFloat + (char)kDivideFloat;
++    size_t op = pkg.rfind(ops, fov[0]);
++    if (op == std::string::npos || fov[0] - op > 48) return false;
++    float squarest = 0.5f;
++    memcpy(&pkg[init[0] + 14], &squarest, 4);
++    pkg[op] = pkg[op + 1] = (char)kFMax;
++    return true;
++}
++
++// IB3's SwordGame.xxx: SwordMenuAnimScene.RenderIPadBars masks the screen above and below the HUD's
++// 3:2 area with two black bars, 80 high: SetPos(0, -80); DrawRect(ClipX, 80); SetPos(0, ClipY);
++// DrawRect(ClipX, 80). On an iPad they lie over the camera's own letterbox; once the view fills the
++// screen they would cover part of it. Their height becomes 0. The SetPos(0, -80) is the package's only
++// one; the two DrawRects follow it.
++bool hide_ipad_bars(std::string& pkg) {
++    const u8 kFinalFunction = 0x1c, kLocalVariable = 0x00, kEmptyParmValue = 0x4a, kEndFunctionParms = 0x16;
++    std::vector<size_t> above = find_masked(pkg, std::string() + (char)kFinalFunction + "????" + float_const(0.0f) + float_const(-80.0f) +
++                                                     (char)kEmptyParmValue + (char)kEndFunctionParms, "x????xxxxxxxxxxxx");
++    if (above.size() != 1) return false;
++    std::string draw_bar = std::string() + (char)kFinalFunction + "????" + (char)kLocalVariable + "????" + float_const(80.0f) +
++                           (char)kEmptyParmValue + (char)kEndFunctionParms;
++    std::vector<size_t> bars;
++    for (size_t at : find_masked(pkg, draw_bar, "x????x????xxxxxxx"))
++        if (at > above[0] && at - above[0] < 0x80) bars.push_back(at);
++    if (bars.size() != 2) return false;
++    float none = 0.0f;
++    for (size_t at : bars) memcpy(&pkg[at + 11], &none, 4);
++    return true;
++}
++
++// IB3's SwordGame.xxx: SwordHudMain.DrawVignette darkens the edges of the exploring view, on high detail
++// only, with an icon laid out over the HUD's 3:2 area, so once the view fills the screen the strips
++// above and below that area are lighter than the rest. It starts with
++//     if (WorldInfo.GetDetailMode() >= 2 && ...)
++// whose 2 becomes 255 (the detail modes go up to 2): no vignette, as on lower detail settings.
++bool skip_vignette(std::string& pkg) {
++    const std::string pattern("\x07??\x82\x99\x38\x3a\x19\x01????\x0a\x00????\x00\x1c????\x16\x38\x3a\x24\x02\x16\x18", 32);
++    std::vector<size_t> hits = find_masked(pkg, pattern, "x??xxxxxx????xx????xx????xxxxxxx");
++    if (hits.size() != 1) return false;
++    pkg[hits[0] + 29] = (char)0xff;
+     return true;
+ }
+ 
+@@ -102,6 +201,16 @@ bool serve_patched(const std::string& bundle_relative, Patch patch) {
+ 
+ }  // namespace
+ 
++bool fill_ib3_squarer_screen(std::string& pkg) {
++    double aspect = uikit::g_device.width_pt / uikit::g_device.height_pt;
++    if (is_ib2() || aspect >= kSquarestPhone) return false;
++    std::string copy = pkg;  // both patches or neither: otherwise the game keeps its letterboxed iPad layout
++    if (!fill_squarer_view(copy) || !hide_ipad_bars(copy)) return false;
++    skip_vignette(copy);  // cosmetic: without it, two slightly lighter strips while exploring
++    pkg.swap(copy);
++    return true;
++}
++
+ bool is_ib2() {
+     static const bool ib2 = [] {
+         std::ifstream f(vfs::host_bundle() + "/Info.plist", std::ios::binary);
+@@ -115,15 +224,20 @@ bool is_ib2() {
+ 
+ void install_widescreen() {
+     double aspect = uikit::g_device.width_pt / uikit::g_device.height_pt;
+-    if (aspect <= kWidestKnown || !is_ib2()) return;
+-    if (!serve_patched("CookedIPhone/SwordGame.xxx", raise_hud_limit)) {
++    bool squarer = aspect < kSquarestPhone;
++    if ((aspect <= kWidestKnown && !squarer) || !is_ib2()) return;
++    auto patch = [&](std::string& pkg) { return widen_hud_range(pkg, squarer) && (!squarer || fill_squarer_view(pkg)); };
++    // (serve_patched writes nothing when the patch fails, so a half-patched package is never served)
++    if (!serve_patched("CookedIPhone/SwordGame.xxx", patch)) {
++        if (squarer) return;  // the game's own iPad layout still fits: a 3:2 view with bars above and below
+         uikit::g_device.width_pt = std::round(uikit::g_device.height_pt * 16 / 9);
+         LOG_WARN("widescreen: HUD layout not found in SwordGame.xxx; keeping the 16:9 screen");
+         return;
+     }
+     LOG_INFO("widescreen: HUD laid out for the full %.0fx%.0f screen", uikit::g_device.width_pt, uikit::g_device.height_pt);
+     // Measured on a 19.5:9 phone: the backdrops need about this much more width than the 16:9 view.
+-    float scale = (float)(aspect / 1.55);
++    // A squarer screen keeps the view's width and adds height instead, in proportion.
++    float scale = (float)(squarer ? (16.0 / 9 / aspect) * (16.0 / 9 / 1.55) : aspect / 1.55);
+     if (serve_patched("CookedIPhone/IB2_InventoryMenu.xxx", [&](std::string& pkg) { return scale_backdrops(pkg, scale); }))
+         LOG_INFO("widescreen: menu backdrops scaled by %.2f", scale);
+     else
+diff --git a/src/port/android/app.cpp b/src/port/android/app.cpp
+index 294c20f..8b57e8c 100644
+--- a/src/port/android/app.cpp
++++ b/src/port/android/app.cpp
+@@ -278,11 +278,17 @@ void on_cmd(android_app* app, int32_t cmd) {
+             // phone's shape (IB3 lays itself out for any width). IB2
+             // only knows the iPhone screens of its time: it is widened only on phones longer than
+             // 16:9, where game::install_widescreen patches its HUD layout (or goes back to 16:9), unless
+-            // the player chose 16:9 with black bars in the settings.
++            // the player chose 16:9 with black bars in the settings. On screens squarer than 3:2
++            // (foldables, tablets) it is narrowed to the screen's shape, and game::install_widescreen
++            // fills it with the HUD and the 3D view (or leaves the game's own iPad layout: a 3:2 view
++            // with bars above and below). Between 3:2 and 16:9 the iPad layout's HUD would run off the
++            // top and bottom, so those keep 16:9.
+             int w = ANativeWindow_getWidth(app->window), h = ANativeWindow_getHeight(app->window);
+             if (w > 0 && h > 0) {
+                 double width = std::round(uikit::g_device.height_pt * std::max(w, h) / std::min(w, h));
+-                if (!is_ib2() || (width > uikit::g_device.width_pt && settings::get().widescreen))
++                bool wider = width > uikit::g_device.width_pt;
++                bool squarer = width <= std::round(uikit::g_device.height_pt * 1.5);
++                if (!is_ib2() || ((wider || squarer) && settings::get().widescreen))
+                     uikit::g_device.width_pt = width;
+             }
+             __android_log_print(ANDROID_LOG_INFO, "ib3", "window %dx%d: screen %.0fx%.0f points", w, h,
+-- 
+2.54.0 (Apple Git-157)
+

@@ -51,6 +51,7 @@ Adding or changing a fix (people or AI agents): follow [AGENTS.md](AGENTS.md).
 | [Super Smash Bros. Ultimate](SmashUltimate/) | Emulator exefs patch (Eden `.pchtxt`, game 13.0.2): **Vert+ / Hor+ camera and correctly shaped UI** for any aspect ratio, plus low-latency Eden settings | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
 | [Super Mario Galaxy 2](SuperMarioGalaxy2/) | Dolphin preset (per-game INI + `[OnFrame]` patches, SB4E01): **full-screen Vert+ / Hor+ 3D with a correctly shaped UI**, tested Adreno 840 settings, Classic Controller support (spin on a button, full touch overlay), gamepad + touch/tilt pointer profiles | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
 | [Naruto Shippuden: Clash of Ninja Revolution III](NarutoShippudenCoNR3/) | Dolphin preset (per-game INI + `[OnFrame]` patch, RNEEDA): **correctly shaped HUD and menus** on any screen shape (Widescreen Hack does the 3D) | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
+| [Infinity Blade II & III](InfinityBlade/) | Android port build (patch to the open-source [ib-2-3-android](https://github.com/jelqedagain/ib-2-3-android) iOS runtime + same-size UnrealScript patches, served at runtime): **full-screen 3D on foldables and tablets**, IB2 HUD at the real screen edges | 2480×2248 (OPPO Find N6 inner screen, ~1.1:1) |
 
 ### Bastion - what's fixed (all at 32:9 / 5120×1440)
 
@@ -134,3 +135,14 @@ Drop-in per-game settings file, no game files modified. **USA (SB4E01) only**; H
 - **Your screen is a setting** - `make_preset.py` writes the per-game preset for any screen: `--width W --height H`, `--aspect 21:9`, or `--from-adb`.
 
 Drop-in per-game settings file, no game files modified. **USA (RNEEDA) only**; Hor+ screens are generated but not yet tested in-game. See [NarutoShippudenCoNR3/dist/INSTALL.md](NarutoShippudenCoNR3/dist/INSTALL.md) and [NarutoShippudenCoNR3/notes.md](NarutoShippudenCoNR3/notes.md).
+
+### Infinity Blade II & III - what's fixed (tested at 2480×2248 / OPPO Find N6, Android port)
+
+- **Fills squarer screens** - on foldable inner screens, tablets and 4:3 the games showed a 16:9 (IB2) or 3:2 (IB3) picture with black bars above and below. Three limits from the iPhone/iPad era caused it (the port's emulated screen, the HUD layout script and the camera), and all three are lifted, but only on screens squarer than 3:2. Every other screen behaves like the official port.
+- **Vert+, not zoom** - the camera keeps its 3:2 field of view and gains height, so you see the full original width plus more above and below, instead of a zoomed-in, cropped view.
+- **IB2 HUD at the real screen edges** - health, buttons and touch zones cover the whole screen, move circles and blocking line up, and menu backdrops are scaled to cover the taller view.
+- **IB3 without the iPad masks** - the 3D view and in-engine cutscenes fill the screen; IB3's own iPad HUD band stays (its full-screen layout misplaces the move circles), and the black iPad bars and the band-sized exploring vignette are removed.
+- **Your screen is read automatically** - the shape comes from the window when the game starts; no setting (IB2's Settings > Screen = 16:9 turns it off).
+- **No game files modified** - patched copies of the game's script package are made from your own `.ipa` at launch, by pattern; if a pattern isn't found, that game keeps its stock layout.
+
+APKs on [Releases](https://github.com/kirankunigiri/ultrawide-game-patches/releases/tag/infinityblade-v1.0) (built by `src/build.sh` from the port at a pinned commit plus one patch). They are signed with our key, so the official app has to be uninstalled first - back up saves in the app. You still need your own `.ipa`. Only 2480x2248 has been tested in-game, with the Community Patch `.ipa`s; pre-rendered videos and IB2's in-engine cutscenes stay 16:9. See [InfinityBlade/dist/INSTALL.md](InfinityBlade/dist/INSTALL.md) and [InfinityBlade/notes.md](InfinityBlade/notes.md) (the three limits, the bytecode patches, and why patched UnrealScript must keep its in-memory size).
