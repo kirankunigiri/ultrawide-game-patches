@@ -7,7 +7,10 @@ showing a 3:2 or 16:9 picture with black bars above and below. Everything else i
 (IB2 1.9.6 / IB3 1.9.5 sources). See [../notes.md](../notes.md) for how it works.
 
 You still need your own `.ipa` of each game, as with the official port (IB2 1.3.5, e.g. the Community
-Patch v2.5; IB3 1.4.4 or the Community Patch v2.5).
+Patch v2.5; IB3 1.4.4 or the Community Patch v2.5). The port's
+[r/infinityblade post](https://www.reddit.com/r/infinityblade/comments/1x1bn4b/infinity_blade_ii_iii_are_now_playable_on_android/)
+("Getting the .ipa") says where the community keeps them; take the "(USE THIS) ... Community Patch
+IPA" folder for each game. Nothing from the games is in this repo.
 
 ## Quick install
 
@@ -22,8 +25,13 @@ Patch v2.5; IB3 1.4.4 or the Community Patch v2.5).
 3. Install the APK (allow installs from your browser or file manager; on a Play Protect warning choose
    "Install anyway").
 4. Open it, tap **Choose .ipa file** and pick your `.ipa` (under a minute).
-5. If you backed up saves: **Saves > Restore saves** and pick the .zip.
+5. Saves: **Saves > Restore saves** and pick the .zip, to bring back saves you backed up, including
+   from another phone.
 6. IB2 only: keep **Settings > Screen** on **Full screen** (the default). 16:9 brings the bars back.
+7. Optional, the real game icon: the app's own icon is a plain placeholder. Answer **Add icon** when
+   the app offers it after installing the `.ipa`, or later **Help > Home screen icon**, and confirm
+   Android's "Add to home screen" prompt. It adds a home screen shortcut with the icon from your
+   `.ipa`; you can then remove the placeholder icon from the home screen (not uninstall).
 
 ## Configuration
 
